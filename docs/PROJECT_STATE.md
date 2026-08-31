@@ -14,9 +14,10 @@ Sprint 1: credible single-factor research lab.
 
 ## Next slices
 
-1. Install Python 3.11 and project dependencies on each laptop, then run the test suite.
-2. Add an SEC EDGAR client with user-agent configuration, rate limiting, caching, and frozen response fixtures.
-3. Add walk-forward split generation and a research-run persistence layer in DuckDB.
+1. Repair GitHub authentication and push the verified local commits before switching laptops.
+2. Use `setup.cmd` and `run-demos.cmd` on both laptops after Python 3.11 is installed.
+3. Implement the first semiconductor-domain mapping slice described in `docs/research/semiconductor-domain-mapping-plan.md`.
+4. Add an SEC EDGAR client with user-agent configuration, rate limiting, caching, and frozen response fixtures.
 
 ## Known risks
 
@@ -32,4 +33,9 @@ Sprint 1: credible single-factor research lab.
 python -m pytest
 python -m alpha_workbench backtest --prices data/demo_prices.csv --factors data/demo_factors.csv --as-of 2024-01-05T21:00:00+00:00
 python -m alpha_workbench scenario --edges data/semiconductor_edges.json --shock TSM --severity 0.9 --as-of 2024-01-15T00:00:00+00:00
+scripts\setup.ps1
+scripts\run-demos.ps1
 ```
+
+The test suite currently contains nine passing tests. Replayable synthetic demo
+output is recorded in `docs/reference/demo-results.md`.

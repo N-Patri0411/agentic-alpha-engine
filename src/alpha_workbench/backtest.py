@@ -113,9 +113,9 @@ def backtest_long_short(
         )
         net_return = gross_return - turnover * cost_rate
         rank_ic = float(
-            group["score"].rank(method="average").corr(
-                group["forward_return"].rank(method="average")
-            )
+            group["score"]
+            .rank(method="average")
+            .corr(group["forward_return"].rank(method="average"))
         )
         rows.append(
             {

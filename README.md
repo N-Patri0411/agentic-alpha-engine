@@ -14,6 +14,8 @@ An open-source, local-first workbench for reproducible quantitative research and
 
 Python 3.11 is required. Create a virtual environment, install the development dependencies, then run:
 
+For the simplest Windows setup, double-click `setup.cmd`. It creates the local `.venv`, installs dependencies, and runs the full verification suite. Then double-click `run-demos.cmd` to run the offline examples.
+
 ```powershell
 python -m alpha_workbench backtest --prices data/demo_prices.csv --factors data/demo_factors.csv --as-of 2024-01-05T21:00:00+00:00
 python -m alpha_workbench scenario --edges data/semiconductor_edges.json --shock TSM --severity 0.9 --as-of 2024-01-15T00:00:00+00:00

@@ -6,6 +6,8 @@ This folder is the beginner-friendly, Git-tracked learning companion for the pro
 
 1. [Finance basics](finance-basics.md) explains the project goal, stocks, returns, alpha, and paper portfolios.
 2. [Backtesting and scenarios](backtesting-and-scenarios.md) explains the current code, demo data, formulas, and supply-chain mapping approach.
+3. [Verified demo results](demo-results.md) shows how to replay and interpret the current demos.
+4. [Semiconductor domain mapping plan](../research/semiconductor-domain-mapping-plan.md) explains the next research milestone.
 
 ## Ground rules
 
