@@ -1,0 +1,21 @@
+# Local environments and generated artifacts
+.venv/
+__pycache__/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+*.py[cod]
+*.egg-info/
+
+# Local research data, credentials, and generated reports
+.env
+.env.*
+!*.env.example
+data/raw/
+data/cache/
+data/private/
+artifacts/
+reports/
+
+# The Karpathy plugin is a separate local checkout enabled per machine.
+andrej-karpathy-skills/

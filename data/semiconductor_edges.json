@@ -1,0 +1,42 @@
+[
+  {
+    "source": "TSM",
+    "target": "NVDA",
+    "relationship": "foundry",
+    "source_url": "https://investor.tsmc.com/english",
+    "weight": 0.95,
+    "substitutability": 0.05,
+    "confidence": 0.8,
+    "effective_from": "2020-01-01T00:00:00+00:00"
+  },
+  {
+    "source": "TSM",
+    "target": "AMD",
+    "relationship": "foundry",
+    "source_url": "https://investor.tsmc.com/english",
+    "weight": 0.9,
+    "substitutability": 0.08,
+    "confidence": 0.8,
+    "effective_from": "2020-01-01T00:00:00+00:00"
+  },
+  {
+    "source": "NVDA",
+    "target": "MSFT",
+    "relationship": "ai_accelerator_supply",
+    "source_url": "https://investor.nvidia.com/",
+    "weight": 0.6,
+    "substitutability": 0.2,
+    "confidence": 0.65,
+    "effective_from": "2021-01-01T00:00:00+00:00"
+  },
+  {
+    "source": "ASML",
+    "target": "TSM",
+    "relationship": "lithography_equipment",
+    "source_url": "https://www.asml.com/en/investors",
+    "weight": 0.95,
+    "substitutability": 0.02,
+    "confidence": 0.75,
+    "effective_from": "2018-01-01T00:00:00+00:00"
+  }
+]
