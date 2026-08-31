@@ -10,6 +10,7 @@ Sprint 1: credible single-factor research lab.
 - A frozen CSV provider supports deterministic, offline backtest fixtures.
 - The initial backtest creates equal-weight long/short paper positions, accounts for turnover costs, and reports rank IC, net returns, drawdown, and turnover.
 - The scenario engine propagates a severity shock over effective-dated supply-chain edges and returns source-backed explanation paths.
+- Beginner-friendly explanations are tracked under `docs/reference/` for both laptops.
 
 ## Next slices
 
@@ -23,6 +24,7 @@ Sprint 1: credible single-factor research lab.
 - The scenario graph is deterministic and hand-curated. It is not a trained predictive model.
 - Backtest statistics are minimal initial diagnostics and do not establish investability.
 - Local Codex plugin configuration does not synchronize; install it on both laptops. The tracked `AGENTS.md` carries the repository rules.
+- GitHub authentication must be repaired before the local commits, including this documentation update, can be shared remotely.
 
 ## Latest verification
 
