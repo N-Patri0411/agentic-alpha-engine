@@ -1,0 +1,11 @@
+# A global catalog owns tool implementation; this file grants named capabilities
+# to each role. Adding a tool never grants it to an agent by accident.
+agents:
+  orchestrator: [message_bus, run_ledger]
+  extraction: [entity_registry, sec_filings, section_selector, evidence_validator, ripple_risk, proposal_store]
+  alpha_generator: [feature_catalog, candidate_store]
+  backtester: [market_data, backtest_runner, report_store]
+  gatekeeper: [policy_evaluator, signal_library]
+  portfolio_optimiser: [portfolio_constraints, paper_target_store]
+  monitor: [signal_health_store, gatekeeper_trigger]
+  research: [research_web, source_catalog]
