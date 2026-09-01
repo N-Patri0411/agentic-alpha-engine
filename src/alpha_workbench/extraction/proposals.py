@@ -1,0 +1,89 @@
+"""Typed draft graph relationships and deterministic evidence validation."""
+
+from __future__ import annotations
+
+from typing import Literal
+from uuid import UUID, uuid4
+
+from pydantic import BaseModel, Field
+
+from ..llm.models import LLMClient
+from .sections import DocumentPassage
+
+RelationshipType = Literal[
+    "manufacturing_dependency",
+    "equipment_dependency",
+    "packaging_dependency",
+    "customer_concentration",
+    "competitive_substitution",
+    "ip_or_license",
+    "geographic_or_regulatory",
+]
+ValidationVerdict = Literal["pass", "needs_review", "fail"]
+
+
+class EdgeProposal(BaseModel):
+    id: UUID = Field(default_factory=uuid4)
+    source_entity_id: str = Field(min_length=1)
+    target_entity_id: str = Field(min_length=1)
+    relationship_type: RelationshipType
+    evidence_quote: str = Field(min_length=10)
+    passage: DocumentPassage
+    rationale: str = Field(min_length=1)
+    suggested_confidence: float = Field(ge=0, le=1)
+    status: Literal["draft", "validated", "rejected"] = "draft"
+
+
+class EvidenceValidationReport(BaseModel):
+    proposal_id: UUID
+    verdict: ValidationVerdict
+    reasons: list[str] = Field(min_length=1)
+
+
+class EvidenceProposalExtractor:
+    """LLM wrapper that can create drafts but cannot write an active graph edge."""
+
+    def __init__(self, llm: LLMClient, known_entities: set[str]) -> None:
+        self._llm = llm
+        self._known_entities = known_entities
+
+    def extract(self, passage: DocumentPassage) -> EdgeProposal:
+        raw = self._llm.complete_json(
+            system=(
+                "Return one JSON EdgeProposal. Use only the supplied passage as evidence. "
+                "Never invent an entity, quote, or relationship."
+            ),
+            user=(
+                f"Known entity IDs: {sorted(self._known_entities)}\n"
+                f"Passage: {passage.text}"
+            ),
+        )
+        raw["passage"] = passage.model_dump(mode="json")
+        return EdgeProposal.model_validate(raw)
+
+
+class EvidenceValidator:
+    """Independent deterministic guard: exact evidence and entity/taxonomy checks."""
+
+    def __init__(self, known_entities: set[str]) -> None:
+        self._known_entities = known_entities
+
+    def validate(self, proposal: EdgeProposal) -> EvidenceValidationReport:
+        reasons: list[str] = []
+        if proposal.source_entity_id not in self._known_entities:
+            reasons.append("source entity is not in the approved domain registry")
+        if proposal.target_entity_id not in self._known_entities:
+            reasons.append("target entity is not in the approved domain registry")
+        if proposal.source_entity_id == proposal.target_entity_id:
+            reasons.append("source and target entities cannot be identical")
+        if proposal.evidence_quote.lower() not in proposal.passage.text.lower():
+            reasons.append("evidence quote is not present in the supplied passage")
+        if reasons:
+            return EvidenceValidationReport(
+                proposal_id=proposal.id, verdict="fail", reasons=reasons
+            )
+        return EvidenceValidationReport(
+            proposal_id=proposal.id,
+            verdict="pass",
+            reasons=["quote, entities, and passage provenance passed deterministic checks"],
+        )
