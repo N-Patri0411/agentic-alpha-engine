@@ -1,0 +1,19 @@
+# Provider-neutral role configuration. Values reference local environment
+# variables; credentials never belong in this file or in Git.
+roles:
+  orchestrator:
+    provider: fake
+    model: deterministic-router
+    api_key_env: OPENAI_API_KEY
+  extraction:
+    provider: fake
+    model: deterministic-extractor
+    api_key_env: OPENAI_API_KEY
+  alpha_generator:
+    provider: fake
+    model: deterministic-generator
+    api_key_env: OPENAI_API_KEY
+  evidence_validator:
+    provider: fake
+    model: deterministic-validator
+    api_key_env: OPENAI_API_KEY

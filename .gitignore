@@ -11,6 +11,8 @@ __pycache__/
 .env
 .env.*
 !*.env.example
+web/node_modules/
+web/dist/
 data/raw/
 data/cache/
 data/private/

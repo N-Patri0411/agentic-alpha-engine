@@ -2,7 +2,7 @@
 
 ## Current milestone
 
-Sprint 1: credible single-factor research lab.
+Phase 0: model-agnostic multi-agent architecture skeleton.
 
 ## Verified capabilities
 
@@ -14,10 +14,10 @@ Sprint 1: credible single-factor research lab.
 
 ## Next slices
 
-1. Repair GitHub authentication and push the verified local commits before switching laptops.
-2. Use `setup.cmd` and `run-demos.cmd` on both laptops after Python 3.11 is installed.
-3. Implement the first semiconductor-domain mapping slice described in `docs/research/semiconductor-domain-mapping-plan.md`.
-4. Add an SEC EDGAR client with user-agent configuration, rate limiting, caching, and frozen response fixtures.
+1. Verify and push the Phase 0 architecture skeleton.
+2. Install Node.js LTS on both laptops, then verify the React review-app shell.
+3. Implement Phase 1: entity registry, typed graph snapshots, and `RippleRiskScorer`.
+4. Implement Phase 2: SEC collection, evidence validation, and human-review inbox.
 
 ## Known risks
 
@@ -25,7 +25,8 @@ Sprint 1: credible single-factor research lab.
 - The scenario graph is deterministic and hand-curated. It is not a trained predictive model.
 - Backtest statistics are minimal initial diagnostics and do not establish investability.
 - Local Codex plugin configuration does not synchronize; install it on both laptops. The tracked `AGENTS.md` carries the repository rules.
-- GitHub authentication must be repaired before the local commits, including this documentation update, can be shared remotely.
+- React dependencies cannot be verified on this laptop until Node.js LTS is installed.
+- Cloud LLM calls require a locally configured provider key; normal tests use a fake model.
 
 ## Latest verification
 
