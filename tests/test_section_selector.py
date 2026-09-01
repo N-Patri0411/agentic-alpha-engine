@@ -60,3 +60,22 @@ def test_selector_ignores_hidden_inline_xbrl_metadata(tmp_path: Path) -> None:
     assert passages
     assert "limited supplier base" in passages[0].text
     assert "ManufacturingProduction" not in passages[0].text
+
+
+def test_selector_ranks_relationship_language_above_generic_industry_text(
+    tmp_path: Path,
+) -> None:
+    cached = tmp_path / "ranked.html"
+    cached.write_text(
+        "<p>Our manufacturing software supports customers.</p>"
+        "<p>We utilize foundries, including TSMC, to produce semiconductor wafers "
+        "and purchase memory from approved suppliers.</p>",
+        encoding="utf-8",
+    )
+    snapshot = SourceSnapshot(
+        source="sec_filings", source_url="https://example.test/filing",
+        retrieved_at=datetime.now(UTC), observed_at=datetime.now(UTC),
+        available_at=datetime.now(UTC), content_sha256="d" * 64, usage_note="fixture",
+    )
+    selected = FilingSectionSelector(window_characters=250).select(cached, snapshot)
+    assert "We utilize foundries" in selected[0].text

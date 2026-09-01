@@ -22,6 +22,23 @@ _KEYWORDS = (
     "packaging",
 )
 
+# These phrases signal an actual commercial relationship more strongly than a
+# generic industry reference (for example, "manufacturing" in a product-market
+# description). They rank passages; they do not create an edge by themselves.
+_RELATIONSHIP_PHRASES = (
+    "we utilize",
+    "we purchase",
+    "we engage",
+    "we rely on",
+    "contract manufacturer",
+    "third-party manufacturer",
+    "supply agreement",
+    "manufacturing capacity",
+    "supply constraints",
+    "sole source",
+    "single source",
+)
+
 # SEC Inline XBRL documents commonly begin with a hidden ``ix:header`` containing
 # taxonomy labels such as ``ManufacturingProduction...``.  Those labels are not
 # filing narrative and must never be offered to the evidence model.
@@ -74,7 +91,7 @@ class DocumentPassage(BaseModel):
 class FilingSectionSelector:
     """Select bounded evidence passages; it makes no claim about relationships."""
 
-    def __init__(self, *, window_characters: int = 500) -> None:
+    def __init__(self, *, window_characters: int = 900) -> None:
         if window_characters < 100:
             raise ValueError("window_characters must be at least 100")
         self._window_characters = window_characters
@@ -85,28 +102,46 @@ class FilingSectionSelector:
         parser = _TextExtractor()
         parser.feed(cached_html.read_text(encoding="utf-8", errors="replace"))
         document = parser.text()
-        passages: list[DocumentPassage] = []
         lower_document = document.lower()
-        cursor = 0
-        while cursor < len(document) and len(passages) < max_passages:
-            matches = [keyword for keyword in _KEYWORDS if keyword in lower_document[cursor:]]
-            if not matches:
-                break
-            positions = [lower_document.find(keyword, cursor) for keyword in matches]
-            start_match = min(position for position in positions if position >= 0)
-            start = max(0, start_match - self._window_characters // 2)
-            end = min(len(document), start_match + self._window_characters)
-            text = document[start:end]
-            matched = [keyword for keyword in _KEYWORDS if keyword in text.lower()]
-            passages.append(
-                DocumentPassage(
-                    snapshot_sha256=snapshot.content_sha256,
-                    source_url=snapshot.source_url,
-                    start_offset=start,
-                    end_offset=end,
-                    text=text,
-                    matching_keywords=matched,
+        candidates: list[tuple[int, int, int, DocumentPassage]] = []
+        for keyword in _KEYWORDS:
+            for match in re.finditer(re.escape(keyword), lower_document):
+                start_match = match.start()
+                start = max(0, start_match - self._window_characters // 2)
+                end = min(len(document), start_match + self._window_characters // 2)
+                text = document[start:end]
+                text_lower = text.lower()
+                matched = [term for term in _KEYWORDS if term in text_lower]
+                relationship_score = sum(
+                    phrase in text_lower for phrase in _RELATIONSHIP_PHRASES
                 )
-            )
-            cursor = end
+                candidates.append(
+                    (
+                        relationship_score,
+                        len(matched),
+                        start,
+                        DocumentPassage(
+                            snapshot_sha256=snapshot.content_sha256,
+                            source_url=snapshot.source_url,
+                            start_offset=start,
+                            end_offset=end,
+                            text=text,
+                            matching_keywords=matched,
+                        ),
+                    )
+                )
+
+        passages: list[DocumentPassage] = []
+        for _, _, _, candidate in sorted(candidates, key=lambda item: item[:3], reverse=True):
+            # Consecutive keyword matches normally point into the same paragraph.
+            # Retain the strongest representative, not near-duplicate model calls.
+            if any(
+                abs(candidate.start_offset - existing.start_offset)
+                < self._window_characters // 2
+                for existing in passages
+            ):
+                continue
+            passages.append(candidate)
+            if len(passages) >= max_passages:
+                break
         return passages
