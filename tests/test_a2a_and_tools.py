@@ -33,8 +33,9 @@ def test_registry_only_resolves_explicitly_granted_tools() -> None:
         registry.resolve("backtester", manifest)
 
 
-def test_future_adapters_are_declared_but_not_implemented() -> None:
-    assert SecFilingAdapter().health_check().implemented is False
+def test_future_adapters_are_declared_but_not_implemented(tmp_path: Path) -> None:
+    sec = SecFilingAdapter(tmp_path, user_agent="Test test@example.com")
+    assert sec.health_check().implemented is True
     assert MarketDataAdapter().health_check().requires_api_key is True
     with pytest.raises(NotImplementedError):
-        SecFilingAdapter().discover({"entity": "TSM"})
+        MarketDataAdapter().discover({"entity": "TSM"})

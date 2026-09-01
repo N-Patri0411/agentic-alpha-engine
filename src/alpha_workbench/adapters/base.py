@@ -10,6 +10,7 @@ from pydantic import BaseModel
 
 class SourceSnapshot(BaseModel):
     source: str
+    source_url: str
     retrieved_at: datetime
     observed_at: datetime
     available_at: datetime
@@ -55,10 +56,6 @@ class StubAdapter:
         return AdapterHealth(
             adapter=self.name, implemented=False, requires_api_key=self.requires_api_key
         )
-
-
-class SecFilingAdapter(StubAdapter):
-    name = "sec_filings"
 
 
 class MarketDataAdapter(StubAdapter):

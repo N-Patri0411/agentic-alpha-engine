@@ -7,9 +7,9 @@ from .base import (
     MarketDataAdapter,
     PatentRegulatoryAdapter,
     ResearchWebAdapter,
-    SecFilingAdapter,
     SourceAdapter,
 )
+from .sec import SecFilingAdapter
 
 __all__ = [
     "EarningsCallAdapter", "InvestorRelationsAdapter", "JobPostingAdapter", "MarketDataAdapter",
