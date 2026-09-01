@@ -34,6 +34,12 @@ class EdgeProposal(BaseModel):
     status: Literal["draft", "validated", "rejected"] = "draft"
 
 
+class NoEdgeProposal(BaseModel):
+    status: Literal["no_proposal"] = "no_proposal"
+    reason: str = Field(min_length=1)
+    passage: DocumentPassage
+
+
 class EvidenceValidationReport(BaseModel):
     proposal_id: UUID
     verdict: ValidationVerdict
@@ -47,7 +53,7 @@ class EvidenceProposalExtractor:
         self._llm = llm
         self._known_entities = known_entities
 
-    def extract(self, passage: DocumentPassage) -> EdgeProposal:
+    def extract(self, passage: DocumentPassage) -> EdgeProposal | NoEdgeProposal:
         raw = self._llm.complete_json(
             system=(
                 "Return one JSON EdgeProposal. Use only the supplied passage as evidence. "
@@ -58,6 +64,13 @@ class EvidenceProposalExtractor:
                 f"Passage: {passage.text}"
             ),
         )
+        if not isinstance(raw, dict):
+            raise ValueError("model response must be a JSON object")
+        if raw.get("source_entity_id") is None and raw.get("target_entity_id") is None:
+            return NoEdgeProposal(
+                reason=str(raw.get("reason", "no supported relationship in passage")),
+                passage=passage,
+            )
         raw["passage"] = passage.model_dump(mode="json")
         return EdgeProposal.model_validate(raw)
 
