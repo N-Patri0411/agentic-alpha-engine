@@ -34,6 +34,10 @@ def _parser() -> argparse.ArgumentParser:
     scenario.add_argument("--as-of", required=True, help="timezone-aware ISO timestamp")
     extract = commands.add_parser("extract-sec", help="run one bounded SEC-to-proposal extraction")
     extract.add_argument("--cik", required=True)
+    extract.add_argument(
+        "--issuer-entity",
+        help="approved entity ID represented by the filing issuer (for example NVDA)",
+    )
     extract.add_argument("--entities", nargs="+", required=True)
     extract.add_argument("--max-passages", type=int, default=1)
     return parser
@@ -69,7 +73,10 @@ def main(argv: Sequence[str] | None = None) -> int:
     )
     report = agent.run_filing(
         FilingExtractionRequest(
-            cik=args.cik, known_entities=entities, max_passages=args.max_passages
+            cik=args.cik,
+            issuer_entity_id=args.issuer_entity,
+            known_entities=entities,
+            max_passages=args.max_passages,
         )
     )
     print(json.dumps(report.model_dump(mode="json"), indent=2, sort_keys=True))

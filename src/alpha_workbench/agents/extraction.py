@@ -23,6 +23,7 @@ from ..llm.models import LLMClient
 
 class FilingExtractionRequest(BaseModel):
     cik: str = Field(min_length=1)
+    issuer_entity_id: str | None = None
     known_entities: set[str] = Field(min_length=2)
     forms: list[str] = Field(default_factory=lambda: ["10-K", "20-F"])
     max_passages: int = Field(default=1, ge=1, le=5)
@@ -73,7 +74,9 @@ class ExtractionAgent:
         outcomes: list[EdgeProposal | NoEdgeProposal] = []
         validations: list[EvidenceValidationReport] = []
         for passage in passages:
-            outcome = self._extractor.extract(passage)
+            outcome = self._extractor.extract(
+                passage, issuer_entity_id=request.issuer_entity_id
+            )
             outcomes.append(outcome)
             if isinstance(outcome, EdgeProposal):
                 validations.append(self._validator.validate(outcome))

@@ -53,7 +53,9 @@ class EvidenceProposalExtractor:
         self._llm = llm
         self._known_entities = known_entities
 
-    def extract(self, passage: DocumentPassage) -> EdgeProposal | NoEdgeProposal:
+    def extract(
+        self, passage: DocumentPassage, *, issuer_entity_id: str | None = None
+    ) -> EdgeProposal | NoEdgeProposal:
         raw = self._llm.complete_json(
             system=(
                 "Use only the supplied passage as evidence. Never invent an entity, quote, "
@@ -64,6 +66,9 @@ class EvidenceProposalExtractor:
             ),
             user=(
                 f"Known entity IDs: {sorted(self._known_entities)}\n"
+                f"Filing issuer entity ID: {issuer_entity_id or 'not supplied'}\n"
+                "When supplied, the filing's first-person references (we, our, us) refer "
+                "to that issuer entity ID.\n"
                 f"Passage: {passage.text}"
             ),
         )

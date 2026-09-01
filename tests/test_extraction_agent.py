@@ -33,6 +33,16 @@ class FakeSecAdapter:
         )
 
 
+class RecordingLLM(FakeLLMClient):
+    def __init__(self) -> None:
+        super().__init__({"source_entity_id": None, "target_entity_id": None, "reason": "fixture"})
+        self.user = ""
+
+    def complete_json(self, *, system: str, user: str) -> dict[str, object]:
+        self.user = user
+        return super().complete_json(system=system, user=user)
+
+
 def test_extraction_agent_composes_source_selection_and_validation(tmp_path: Path) -> None:
     response = {
         "source_entity_id": "TSM", "target_entity_id": "NVDA",
@@ -45,5 +55,24 @@ def test_extraction_agent_composes_source_selection_and_validation(tmp_path: Pat
         EvidenceProposalExtractor(FakeLLMClient(response), {"TSM", "NVDA"}),
         EvidenceValidator({"TSM", "NVDA"}), tmp_path,
     )
-    report = agent.run_filing(FilingExtractionRequest(cik="1", known_entities={"TSM", "NVDA"}))
+    report = agent.run_filing(
+        FilingExtractionRequest(
+            cik="1", issuer_entity_id="NVDA", known_entities={"TSM", "NVDA"}
+        )
+    )
     assert report.validations[0].verdict == "pass"
+
+
+def test_extraction_agent_supplies_issuer_context_to_the_model(tmp_path: Path) -> None:
+    llm = RecordingLLM()
+    agent = ExtractionAgent(
+        FakeSecAdapter(tmp_path), FilingSectionSelector(window_characters=100),
+        EvidenceProposalExtractor(llm, {"TSM", "NVDA"}),
+        EvidenceValidator({"TSM", "NVDA"}), tmp_path,
+    )
+    agent.run_filing(
+        FilingExtractionRequest(
+            cik="1", issuer_entity_id="NVDA", known_entities={"TSM", "NVDA"}
+        )
+    )
+    assert "Filing issuer entity ID: NVDA" in llm.user
