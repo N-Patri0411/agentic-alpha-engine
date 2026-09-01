@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
 from pathlib import Path
 
 from pydantic import BaseModel, Field
@@ -58,7 +59,15 @@ class ExtractionAgent:
         filings = self._sec_filings.discover({"cik": request.cik, "forms": request.forms})
         if not filings:
             raise RuntimeError("no selected SEC filings found")
-        snapshot = self._sec_filings.fetch(str(filings[0]["source_url"]))
+        filing_date_value = filings[0].get("filing_date")
+        filing_date = (
+            datetime.fromisoformat(str(filing_date_value)).replace(tzinfo=UTC)
+            if filing_date_value
+            else None
+        )
+        snapshot = self._sec_filings.fetch(
+            str(filings[0]["source_url"]), available_at=filing_date
+        )
         cached_html = self._cache_dir / f"{snapshot.content_sha256}.html"
         passages = self._selector.select(cached_html, snapshot, max_passages=request.max_passages)
         outcomes: list[EdgeProposal | NoEdgeProposal] = []

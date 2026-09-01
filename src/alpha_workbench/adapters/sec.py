@@ -63,7 +63,9 @@ class SecFilingAdapter:
                             "filing_date": recent["filingDate"][index], "source_url": url})
         return filings
 
-    def fetch(self, identifier: str) -> SourceSnapshot:
+    def fetch(
+        self, identifier: str, *, available_at: datetime | None = None
+    ) -> SourceSnapshot:
         response = self._get(identifier)
         content = response.content
         digest = hashlib.sha256(content).hexdigest()
@@ -75,7 +77,7 @@ class SecFilingAdapter:
             source_url=identifier,
             retrieved_at=now,
             observed_at=now,
-            available_at=now,
+            available_at=available_at or now,
             content_sha256=digest,
             usage_note="SEC public filing; cached locally",
         )

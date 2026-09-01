@@ -19,7 +19,9 @@ class FakeSecAdapter:
         del query
         return [{"source_url": "https://example.test/filing"}]
 
-    def fetch(self, identifier: str) -> SourceSnapshot:
+    def fetch(
+        self, identifier: str, *, available_at: datetime | None = None
+    ) -> SourceSnapshot:
         content_hash = "a" * 64
         (self.cache_dir / f"{content_hash}.html").write_text(
             "<p>TSMC supplies manufacturing capacity for NVIDIA products.</p>", encoding="utf-8"
@@ -27,7 +29,7 @@ class FakeSecAdapter:
         now = datetime.now(UTC)
         return SourceSnapshot(
             source="fixture", source_url=identifier, retrieved_at=now, observed_at=now,
-            available_at=now, content_sha256=content_hash, usage_note="fixture",
+            available_at=available_at or now, content_sha256=content_hash, usage_note="fixture",
         )
 
 

@@ -2,7 +2,7 @@
 
 ## Current milestone
 
-Phase 0: model-agnostic multi-agent architecture skeleton.
+Phase 2: SEC extraction and evidence review (passage-selection hardening).
 
 ## Verified capabilities
 
@@ -28,11 +28,16 @@ Phase 0: model-agnostic multi-agent architecture skeleton.
 - React dependencies cannot be verified on this laptop until Node.js LTS is installed.
 - Cloud LLM calls require a locally configured provider key; normal tests use a fake model.
 - The tracked $2/day budget is a policy default; its persistent enforcement ledger is the next agent-runtime safety slice.
+- Filing passage selection is keyword-based and is deliberately conservative. It now excludes
+  hidden Inline-XBRL metadata, but it still needs broader section-aware ranking before large-scale
+  research collection.
 
 ## Latest verification
 
 ```powershell
-python -m pytest
+.venv\Scripts\python.exe -m pytest -q
+.venv\Scripts\ruff.exe check .
+.venv\Scripts\mypy.exe src
 python -m alpha_workbench backtest --prices data/demo_prices.csv --factors data/demo_factors.csv --as-of 2024-01-05T21:00:00+00:00
 python -m alpha_workbench scenario --edges data/semiconductor_edges.json --shock TSM --severity 0.9 --as-of 2024-01-15T00:00:00+00:00
 scripts\setup.ps1

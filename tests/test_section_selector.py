@@ -40,3 +40,23 @@ def test_selector_returns_no_passage_when_terms_are_absent(tmp_path: Path) -> No
         usage_note="fixture",
     )
     assert FilingSectionSelector().select(cached, snapshot) == []
+
+
+def test_selector_ignores_hidden_inline_xbrl_metadata(tmp_path: Path) -> None:
+    cached = tmp_path / "inline-xbrl.html"
+    cached.write_text(
+        "<html><body><div style='display:none'><ix:header><ix:hidden>"
+        "ManufacturingProductionAndCapacityAgreementMember supplier"
+        "</ix:hidden></ix:header></div><p>We rely on a limited supplier base "
+        "for advanced packaging capacity.</p></body></html>",
+        encoding="utf-8",
+    )
+    snapshot = SourceSnapshot(
+        source="sec_filings", source_url="https://example.test/filing",
+        retrieved_at=datetime.now(UTC), observed_at=datetime.now(UTC),
+        available_at=datetime.now(UTC), content_sha256="c" * 64, usage_note="fixture",
+    )
+    passages = FilingSectionSelector(window_characters=100).select(cached, snapshot)
+    assert passages
+    assert "limited supplier base" in passages[0].text
+    assert "ManufacturingProduction" not in passages[0].text

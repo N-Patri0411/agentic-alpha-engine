@@ -56,8 +56,11 @@ class EvidenceProposalExtractor:
     def extract(self, passage: DocumentPassage) -> EdgeProposal | NoEdgeProposal:
         raw = self._llm.complete_json(
             system=(
-                "Return one JSON EdgeProposal. Use only the supplied passage as evidence. "
-                "Never invent an entity, quote, or relationship."
+                "Use only the supplied passage as evidence. Never invent an entity, quote, "
+                "or relationship. If the passage does not explicitly support one relationship "
+                "between two known entities, return exactly a no-proposal object with "
+                "source_entity_id: null, target_entity_id: null, and a short reason. Otherwise "
+                "return one JSON EdgeProposal."
             ),
             user=(
                 f"Known entity IDs: {sorted(self._known_entities)}\n"

@@ -1,3 +1,4 @@
+from datetime import UTC, datetime
 from pathlib import Path
 
 import httpx
@@ -22,6 +23,8 @@ def test_sec_adapter_discovers_and_caches_a_frozen_document(tmp_path: Path) -> N
     adapter = SecFilingAdapter(tmp_path, user_agent="Test test@example.com", client=client)
     filings = adapter.discover({"cik": "1045810", "forms": ["10-K"]})
     assert filings[0]["form"] == "10-K"
-    snapshot = adapter.fetch(str(filings[0]["source_url"]))
+    published_at = datetime(2024, 2, 1, tzinfo=UTC)
+    snapshot = adapter.fetch(str(filings[0]["source_url"]), available_at=published_at)
     assert snapshot.source_url == filings[0]["source_url"]
+    assert snapshot.available_at == published_at
     assert (tmp_path / f"{snapshot.content_sha256}.html").exists()

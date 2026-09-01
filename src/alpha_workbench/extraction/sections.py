@@ -22,14 +22,41 @@ _KEYWORDS = (
     "packaging",
 )
 
+# SEC Inline XBRL documents commonly begin with a hidden ``ix:header`` containing
+# taxonomy labels such as ``ManufacturingProduction...``.  Those labels are not
+# filing narrative and must never be offered to the evidence model.
+_NON_NARRATIVE_TAGS = {
+    "script",
+    "style",
+    "ix:header",
+    "ix:hidden",
+    "ix:references",
+    "ix:resources",
+    "xbrli:context",
+    "xbrli:unit",
+    "link:schemaref",
+}
+
 
 class _TextExtractor(HTMLParser):
     def __init__(self) -> None:
         super().__init__()
         self.parts: list[str] = []
+        self._ignored_tag_depth = 0
+
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        del attrs
+        if self._ignored_tag_depth or tag.lower() in _NON_NARRATIVE_TAGS:
+            self._ignored_tag_depth += 1
+
+    def handle_endtag(self, tag: str) -> None:
+        del tag
+        if self._ignored_tag_depth:
+            self._ignored_tag_depth -= 1
 
     def handle_data(self, data: str) -> None:
-        self.parts.append(data)
+        if not self._ignored_tag_depth:
+            self.parts.append(data)
 
     def text(self) -> str:
         return re.sub(r"\s+", " ", " ".join(self.parts)).strip()
