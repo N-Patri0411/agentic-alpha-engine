@@ -1,0 +1,6 @@
+# Tracked policy defaults. Actual enforcement is added before cloud agent calls.
+llm:
+  daily_budget_usd: 2.00
+  manual_runs_only: true
+  max_llm_calls_per_run: 20
+  max_runtime_seconds: 900

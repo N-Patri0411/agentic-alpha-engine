@@ -1,0 +1,3 @@
+# Full local development installation: application, agent runtime, and checks.
+# Run: python -m pip install -r requirements.txt
+-e .[agents,dev]

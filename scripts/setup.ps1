@@ -40,8 +40,8 @@ try {
         }
     }
 
-    Write-Host "Installing project and development dependencies..."
-    & $venvPython -m pip install -e ".[dev]"
+    Write-Host "Installing project, agent, and development dependencies..."
+    & $venvPython -m pip install -e ".[agents,dev]"
     if ($LASTEXITCODE -ne 0) {
         throw "Dependency installation failed."
     }

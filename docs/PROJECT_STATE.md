@@ -27,6 +27,7 @@ Phase 0: model-agnostic multi-agent architecture skeleton.
 - Local Codex plugin configuration does not synchronize; install it on both laptops. The tracked `AGENTS.md` carries the repository rules.
 - React dependencies cannot be verified on this laptop until Node.js LTS is installed.
 - Cloud LLM calls require a locally configured provider key; normal tests use a fake model.
+- The tracked $2/day budget is a policy default; its persistent enforcement ledger is the next agent-runtime safety slice.
 
 ## Latest verification
 
