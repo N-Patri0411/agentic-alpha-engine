@@ -6,7 +6,6 @@ import pytest
 from alpha_workbench.agents import (
     AlphaGeneratorAgent,
     BacktesterAgent,
-    ExtractionAgent,
     GatekeeperAgent,
     MonitorAgent,
     PortfolioOptimiserAgent,
@@ -21,7 +20,6 @@ from alpha_workbench.server.app import health, start_run
 @pytest.mark.parametrize(
     ("agent", "name"),
     [
-        (ExtractionAgent(), "extraction"),
         (AlphaGeneratorAgent(), "alpha_generator"),
         (BacktesterAgent(), "backtester"),
         (GatekeeperAgent(), "gatekeeper"),
