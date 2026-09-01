@@ -1,6 +1,8 @@
 from datetime import UTC, datetime
 from pathlib import Path
 
+import pytest
+
 from alpha_workbench.adapters.base import SourceSnapshot
 from alpha_workbench.agents.extraction import ExtractionAgent, FilingExtractionRequest
 from alpha_workbench.extraction import (
@@ -76,3 +78,20 @@ def test_extraction_agent_supplies_issuer_context_to_the_model(tmp_path: Path) -
         )
     )
     assert "Filing issuer entity ID: NVDA" in llm.user
+
+
+def test_incomplete_model_edge_is_rejected_before_validation(tmp_path: Path) -> None:
+    agent = ExtractionAgent(
+        FakeSecAdapter(tmp_path), FilingSectionSelector(window_characters=100),
+        EvidenceProposalExtractor(
+            FakeLLMClient({"source_entity_id": "NVDA", "target_entity_id": "TSM"}),
+            {"TSM", "NVDA"},
+        ),
+        EvidenceValidator({"TSM", "NVDA"}), tmp_path,
+    )
+    with pytest.raises(ValueError, match="failed contract validation"):
+        agent.run_filing(
+            FilingExtractionRequest(
+                cik="1", issuer_entity_id="NVDA", known_entities={"TSM", "NVDA"}
+            )
+        )

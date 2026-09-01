@@ -62,7 +62,14 @@ class EvidenceProposalExtractor:
                 "or relationship. If the passage does not explicitly support one relationship "
                 "between two known entities, return exactly a no-proposal object with "
                 "source_entity_id: null, target_entity_id: null, and a short reason. Otherwise "
-                "return one JSON EdgeProposal."
+                "return exactly one flat JSON object with these required keys: "
+                "source_entity_id, target_entity_id, relationship_type, evidence_quote, "
+                "rationale, suggested_confidence. relationship_type must be one of "
+                "manufacturing_dependency, equipment_dependency, packaging_dependency, "
+                "customer_concentration, competitive_substitution, ip_or_license, or "
+                "geographic_or_regulatory. evidence_quote must be an exact quote from the "
+                "passage and suggested_confidence must be a number from 0 to 1. Do not nest "
+                "the response or omit any required key."
             ),
             user=(
                 f"Known entity IDs: {sorted(self._known_entities)}\n"
@@ -80,7 +87,12 @@ class EvidenceProposalExtractor:
                 passage=passage,
             )
         raw["passage"] = passage.model_dump(mode="json")
-        return EdgeProposal.model_validate(raw)
+        try:
+            return EdgeProposal.model_validate(raw)
+        except ValueError as error:
+            raise ValueError(
+                "model edge proposal failed contract validation; proposal was not retained"
+            ) from error
 
 
 class EvidenceValidator:
