@@ -1,0 +1,61 @@
+{
+  "snapshot_id": "semiconductor-sec-reviewed-v1",
+  "schema_version": "1",
+  "created_at": "2026-09-01T19:30:00Z",
+  "entity_registry_id": "semiconductor-v1",
+  "edges": [
+    {
+      "edge_id": "tsm-to-nvda-manufacturing-2026-02-25",
+      "upstream_entity_id": "TSM",
+      "downstream_entity_id": "NVDA",
+      "relationship_type": "manufacturing_dependency",
+      "dependency_strength": 0.75,
+      "substitutability": 0.35,
+      "confidence": 0.9,
+      "effective_from": "2026-02-25T00:00:00Z",
+      "effective_to": null,
+      "evidence": {
+        "source_url": "https://www.sec.gov/Archives/edgar/data/1045810/000104581026000021/nvda-20260125.htm",
+        "filing_accession": "0001045810-26-000021",
+        "filing_date": "2026-02-25T00:00:00Z",
+        "snapshot_sha256": "73d81f5a111abcf72426c840871e76f5f5edc9631f436d495a86b6f87306d58b",
+        "evidence_quote": "We utilize foundries, such as Taiwan Semiconductor Manufacturing Company Limited, or TSMC, and Samsung Electronics Co., Ltd., or Samsung, to produce our semiconductor wafers.",
+        "extraction_proposal_id": "ab5b0bbf-291c-42b5-80e4-c08e7346dcaf",
+        "validator_verdict": "pass"
+      },
+      "review": {
+        "reviewed_by": "codex_human_review",
+        "reviewed_at": "2026-09-01T19:30:00Z",
+        "decision": "approved",
+        "rationale": "The filing names the counterpart and directly describes the manufacturing reliance. Scenario parameters are conservative review assumptions, not model confidence."
+      }
+    },
+    {
+      "edge_id": "tsm-to-amd-manufacturing-2026-02-04",
+      "upstream_entity_id": "TSM",
+      "downstream_entity_id": "AMD",
+      "relationship_type": "manufacturing_dependency",
+      "dependency_strength": 0.85,
+      "substitutability": 0.2,
+      "confidence": 0.95,
+      "effective_from": "2026-02-04T00:00:00Z",
+      "effective_to": null,
+      "evidence": {
+        "source_url": "https://www.sec.gov/Archives/edgar/data/2488/000000248826000018/amd-20251227.htm",
+        "filing_accession": "0000002488-26-000018",
+        "filing_date": "2026-02-04T00:00:00Z",
+        "snapshot_sha256": "247b08e661e15f3c3a18a77ea40c0fa8702d23c4b05e2d5303e305840c45b111",
+        "evidence_quote": "We rely on Taiwan Semiconductor Manufacturing Company Limited (TSMC) for the production of all wafers for microprocessor and GPU products at 7 nanometer (nm) or smaller nodes",
+        "extraction_proposal_id": "fe22eae2-3c7d-4a16-88bf-73c262b47de0",
+        "validator_verdict": "pass"
+      },
+      "review": {
+        "reviewed_by": "codex_human_review",
+        "reviewed_at": "2026-09-01T19:30:00Z",
+        "decision": "approved",
+        "rationale": "The filing names the counterpart and directly describes the manufacturing reliance. Scenario parameters are conservative review assumptions, not model confidence."
+      }
+    }
+  ],
+  "edges_sha256": "9ed2ad5ca1ef26318151409dff85d61fe7bd11770da768dbe4b3fba82790744f"
+}

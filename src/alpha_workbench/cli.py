@@ -11,6 +11,7 @@ from .agents import FilingExtractionRequest, build_extraction_agent
 from .backtest import backtest_long_short
 from .data import FrozenCSVMarketDataProvider, load_factors, parse_as_of
 from .graph import SupplyChainGraph
+from .graph_registry import RippleRiskScorer
 from .llm.models import create_llm, load_model_config
 
 
@@ -32,6 +33,14 @@ def _parser() -> argparse.ArgumentParser:
     scenario.add_argument("--shock", required=True)
     scenario.add_argument("--severity", type=float, required=True)
     scenario.add_argument("--as-of", required=True, help="timezone-aware ISO timestamp")
+    ripple = commands.add_parser(
+        "ripple-score", help="replay a reviewed immutable graph snapshot"
+    )
+    ripple.add_argument("--snapshot", type=Path, required=True)
+    ripple.add_argument("--shock", required=True)
+    ripple.add_argument("--severity", type=float, required=True)
+    ripple.add_argument("--as-of", required=True, help="timezone-aware ISO timestamp")
+    ripple.add_argument("--max-hops", type=int, default=3)
     extract = commands.add_parser("extract-sec", help="run one bounded SEC-to-proposal extraction")
     extract.add_argument("--cik", required=True)
     extract.add_argument(
@@ -63,6 +72,15 @@ def main(argv: Sequence[str] | None = None) -> int:
         graph = SupplyChainGraph.from_json(args.edges)
         scenario_result = graph.scenario(args.shock, args.severity, as_of)
         print(json.dumps(scenario_result.model_dump(mode="json"), indent=2, sort_keys=True))
+        return 0
+    if args.command == "ripple-score":
+        result = RippleRiskScorer.from_json(args.snapshot).score(
+            shock_entity_id=args.shock,
+            severity=args.severity,
+            as_of_time=parse_as_of(args.as_of),
+            max_hops=args.max_hops,
+        )
+        print(json.dumps(result.model_dump(mode="json"), indent=2, sort_keys=True))
         return 0
     root = Path.cwd()
     entities = set(args.entities)

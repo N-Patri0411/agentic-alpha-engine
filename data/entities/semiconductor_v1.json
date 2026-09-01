@@ -1,0 +1,15 @@
+{
+  "registry_id": "semiconductor-v1",
+  "schema_version": "1",
+  "created_at": "2026-09-01T00:00:00Z",
+  "entities": [
+    {"entity_id": "TSM", "legal_name": "Taiwan Semiconductor Manufacturing Company Limited", "aliases": ["TSMC", "Taiwan Semiconductor Manufacturing Company Limited"], "cik": "0001046179", "ticker": "TSM", "tradeable": true},
+    {"entity_id": "NVDA", "legal_name": "NVIDIA Corporation", "aliases": ["NVIDIA", "NVIDIA Corporation"], "cik": "0001045810", "ticker": "NVDA", "tradeable": true},
+    {"entity_id": "AMD", "legal_name": "Advanced Micro Devices, Inc.", "aliases": ["AMD", "Advanced Micro Devices", "Advanced Micro Devices, Inc."], "cik": "0000002488", "ticker": "AMD", "tradeable": true},
+    {"entity_id": "Samsung", "legal_name": "Samsung Electronics Co., Ltd.", "aliases": ["Samsung", "Samsung Electronics"], "tradeable": false},
+    {"entity_id": "Hynix", "legal_name": "SK hynix Inc.", "aliases": ["SK Hynix", "SK hynix"], "tradeable": false},
+    {"entity_id": "MU", "legal_name": "Micron Technology, Inc.", "aliases": ["Micron", "Micron Technology"], "ticker": "MU", "tradeable": true},
+    {"entity_id": "GFS", "legal_name": "GlobalFoundries Inc.", "aliases": ["GLOBALFOUNDRIES", "GF", "GlobalFoundries"], "ticker": "GFS", "tradeable": true},
+    {"entity_id": "UMC", "legal_name": "United Microelectronics Corporation", "aliases": ["UMC", "United Microelectronics"], "ticker": "UMC", "tradeable": true}
+  ]
+}
