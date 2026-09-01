@@ -17,6 +17,9 @@ from typing import Any, Protocol
 import yaml
 from pydantic import BaseModel, Field
 
+from ..settings import load_local_environment
+from .budget import DailyBudgetLedger
+
 
 class ModelConfig(BaseModel):
     """Provider configuration for one named agent role."""
@@ -47,11 +50,13 @@ class FakeLLMClient:
 class LiteLLMClient:
     """Lazy LiteLLM adapter; imported only for an explicitly configured cloud call."""
 
-    def __init__(self, config: ModelConfig, api_key: str) -> None:
+    def __init__(self, config: ModelConfig, api_key: str, ledger: DailyBudgetLedger) -> None:
         self._config = config
         self._api_key = api_key
+        self._ledger = ledger
 
     def complete_json(self, *, system: str, user: str) -> dict[str, Any]:
+        self._ledger.reserve(0.10)
         try:
             from litellm import completion
         except ImportError as error:  # pragma: no cover - exercised by user setup
@@ -90,7 +95,12 @@ def create_llm(config: ModelConfig) -> LLMClient:
 
     if config.provider == "fake":
         return FakeLLMClient()
+    load_local_environment()
     api_key = os.getenv(config.api_key_env)
     if not api_key:
         raise RuntimeError(f"missing required local environment variable {config.api_key_env}")
-    return LiteLLMClient(config, api_key)
+    return LiteLLMClient(
+        config,
+        api_key,
+        DailyBudgetLedger(Path("data/private/llm_budget.sqlite3"), daily_limit_usd=2.0),
+    )
