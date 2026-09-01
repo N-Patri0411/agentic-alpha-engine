@@ -35,7 +35,7 @@ Phase 2: SEC extraction and evidence review (passage-selection hardening).
 ## Latest verification
 
 ```powershell
-.venv\Scripts\python.exe -m pytest -q
+.venv\Scripts\python.exe -m pytest -q -p no:cacheprovider --basetemp .test-tmp
 .venv\Scripts\ruff.exe check .
 .venv\Scripts\mypy.exe src
 python -m alpha_workbench backtest --prices data/demo_prices.csv --factors data/demo_factors.csv --as-of 2024-01-05T21:00:00+00:00
@@ -46,3 +46,8 @@ scripts\run-demos.ps1
 
 The test suite currently contains nine passing tests. Replayable synthetic demo
 output is recorded in `docs/reference/demo-results.md`.
+
+The SEC extraction slice has 33 passing tests with the command above. A live
+NVIDIA 10-K and AMD 10-K produced draft, provenance-validated manufacturing
+dependencies on TSM; a TSMC 20-F correctly produced no proposal when no
+approved counterparty was named. See `docs/research/2026-09-01-live-sec-extraction-trial.md`.
