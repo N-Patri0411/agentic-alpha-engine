@@ -1,0 +1,94 @@
+{
+  "catalog_id": "semiconductor-primary-sources-v1",
+  "schema_version": "1",
+  "sources": [
+    {
+      "issuer_entity_id": "NVDA",
+      "source_kind": "sec_filings",
+      "url": "https://www.sec.gov/edgar/browse/?CIK=0001045810",
+      "cik": "0001045810",
+      "polling_hint": "event_driven",
+      "usage_note": "SEC EDGAR issuer filing index"
+    },
+    {
+      "issuer_entity_id": "NVDA",
+      "source_kind": "investor_relations",
+      "url": "https://investor.nvidia.com/news/default.aspx",
+      "format": "html_page",
+      "polling_hint": "nightly",
+      "usage_note": "NVIDIA official investor-relations newsroom"
+    },
+    {
+      "issuer_entity_id": "AMD",
+      "source_kind": "sec_filings",
+      "url": "https://www.sec.gov/edgar/browse/?CIK=0000002488",
+      "cik": "0000002488",
+      "polling_hint": "event_driven",
+      "usage_note": "SEC EDGAR issuer filing index"
+    },
+    {
+      "issuer_entity_id": "AMD",
+      "source_kind": "investor_relations",
+      "url": "https://ir.amd.com/news-events/press-releases",
+      "format": "html_page",
+      "polling_hint": "nightly",
+      "usage_note": "AMD official investor-relations press-release page"
+    },
+    {
+      "issuer_entity_id": "TSM",
+      "source_kind": "sec_filings",
+      "url": "https://www.sec.gov/edgar/browse/?CIK=0001046179",
+      "cik": "0001046179",
+      "polling_hint": "event_driven",
+      "usage_note": "SEC EDGAR issuer filing index"
+    },
+    {
+      "issuer_entity_id": "TSM",
+      "source_kind": "investor_relations",
+      "url": "https://investor.tsmc.com/english/news",
+      "format": "html_page",
+      "polling_hint": "nightly",
+      "usage_note": "TSMC official investor-relations news page"
+    },
+    {
+      "issuer_entity_id": "Samsung",
+      "source_kind": "investor_relations",
+      "url": "https://news.samsung.com/global/category/corporate",
+      "format": "html_page",
+      "polling_hint": "nightly",
+      "usage_note": "Samsung official corporate newsroom"
+    },
+    {
+      "issuer_entity_id": "Hynix",
+      "source_kind": "investor_relations",
+      "url": "https://news.skhynix.com/",
+      "format": "html_page",
+      "polling_hint": "nightly",
+      "usage_note": "SK hynix official newsroom"
+    },
+    {
+      "issuer_entity_id": "MU",
+      "source_kind": "investor_relations",
+      "url": "https://investors.micron.com/news-releases",
+      "format": "html_page",
+      "polling_hint": "nightly",
+      "usage_note": "Micron official investor-relations news page"
+    },
+    {
+      "issuer_entity_id": "GFS",
+      "source_kind": "investor_relations",
+      "url": "https://investors.gf.com/news-events/news-releases",
+      "format": "html_page",
+      "polling_hint": "nightly",
+      "usage_note": "GlobalFoundries official investor-relations news page"
+    },
+    {
+      "issuer_entity_id": "UMC",
+      "source_kind": "investor_relations",
+      "url": "https://www.umc.com/en/InvestorServices/News",
+      "format": "html_page",
+      "polling_hint": "nightly",
+      "usage_note": "UMC official investor-services news page"
+    }
+  ]
+}
