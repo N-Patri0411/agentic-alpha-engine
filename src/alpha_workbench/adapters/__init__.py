@@ -5,6 +5,7 @@ from .base import (
     InvestorRelationsAdapter,
     JobPostingAdapter,
     MarketDataAdapter,
+    ObservationAdapter,
     PatentRegulatoryAdapter,
     ResearchWebAdapter,
     SourceAdapter,
@@ -13,5 +14,6 @@ from .sec import SecFilingAdapter
 
 __all__ = [
     "EarningsCallAdapter", "InvestorRelationsAdapter", "JobPostingAdapter", "MarketDataAdapter",
-    "PatentRegulatoryAdapter", "ResearchWebAdapter", "SecFilingAdapter", "SourceAdapter",
+    "ObservationAdapter", "PatentRegulatoryAdapter", "ResearchWebAdapter", "SecFilingAdapter",
+    "SourceAdapter",
 ]

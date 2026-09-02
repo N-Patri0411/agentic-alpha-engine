@@ -7,6 +7,8 @@ from typing import Protocol
 
 from pydantic import BaseModel
 
+from ..evidence import EvidenceObservation
+
 
 class SourceSnapshot(BaseModel):
     source: str
@@ -32,6 +34,16 @@ class SourceAdapter(Protocol):
     def fetch(self, identifier: str) -> SourceSnapshot: ...
 
     def normalize(self, snapshot: SourceSnapshot) -> list[dict[str, object]]: ...
+
+    def health_check(self) -> AdapterHealth: ...
+
+
+class ObservationAdapter(Protocol):
+    """Contract for future adapters that emit durable common observations."""
+
+    name: str
+
+    def collect(self, query: dict[str, object]) -> list[EvidenceObservation]: ...
 
     def health_check(self) -> AdapterHealth: ...
 

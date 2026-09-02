@@ -2,7 +2,7 @@
 
 ## Current milestone
 
-Phase 1 graph foundation: reviewed entity registry and immutable snapshots.
+Evidence-platform foundation: common immutable evidence records and local ledger.
 
 ## Verified capabilities
 
@@ -15,14 +15,18 @@ Phase 1 graph foundation: reviewed entity registry and immutable snapshots.
 - The first immutable SEC-backed graph snapshot contains reviewed TSM-to-NVIDIA
   and TSM-to-AMD manufacturing dependencies. `RippleRiskScorer` replays it
   with evidence paths and rejects a tampered snapshot.
+- Every future source can emit the same immutable `EvidenceObservation` envelope,
+  with typed text, filing-fact, market-bar, or event-signal payloads. A local
+  DuckDB ledger records observations, source-catalog entries, and run receipts
+  append-only with idempotency protection.
 - Beginner-friendly explanations are tracked under `docs/reference/` for both laptops.
 
 ## Next slices
 
-1. Build the human-review inbox and batch proposal workflow for graph publication.
-2. Expand the entity registry and reviewed evidence coverage across the semiconductor domain.
-3. Connect `RippleRiskScorer` as an Extraction Agent tool after the tool registry has a live registration path.
-4. Implement SEC collection expansion, evidence validation, and reviewed graph publication UI.
+1. Implement SEC multi-form and official investor-relations adapters against the common evidence contract.
+2. Implement official earnings evidence, web discovery/corroboration, and market-data adapters.
+3. Refactor the Extraction Agent to collect common observations before proposing graph evidence.
+4. Build Graph Adjudicator policy and temporal state after source coverage is proven.
 
 ## Known risks
 
@@ -53,7 +57,7 @@ scripts\run-demos.ps1
 The test suite currently contains nine passing tests. Replayable synthetic demo
 output is recorded in `docs/reference/demo-results.md`.
 
-The SEC extraction slice has 33 passing tests with the command above. A live
+The evidence-platform and SEC extraction slices have 39 passing tests with the command above. A live
 NVIDIA 10-K and AMD 10-K produced draft, provenance-validated manufacturing
 dependencies on TSM; a TSMC 20-F correctly produced no proposal when no
 approved counterparty was named. The two approved dependencies are now in
