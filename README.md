@@ -8,6 +8,8 @@ An open-source, local-first workbench for reproducible quantitative research and
 - Frozen CSV market-data provider with point-in-time availability checks.
 - Cost-aware, gross-normalized long/short factor backtest and JSON report.
 - Effective-dated, sourced semiconductor supply-chain shock propagation.
+- Point-in-time historical-event replay with immutable scenario-run receipts
+  and graph-view export data for the upcoming React viewer.
 - Fixture-based tests that run without network access.
 
 ## Quick start
