@@ -29,12 +29,16 @@ Evidence-first source layer and bounded living-graph foundation.
   validates model output, and applies bounded reliability/freshness-weighted
   changes before the write-once publisher creates a new graph snapshot. One weak
   discovery source cannot add a graph edge.
+- `EvidenceIntakeService` invokes only explicitly registered source adapters and
+  writes a completed or failed collection receipt. `NightlyGraphConsolidator`
+  reads ledger observations at a declared as-of time and routes them through the
+  adjudicator to a write-once snapshot path.
 - Beginner-friendly explanations are tracked under `docs/reference/` for both laptops.
 
 ## Next slices
 
-1. Add a bounded runtime command that collects eligible observations, records a
-   receipt, and consolidates them into a nightly graph snapshot.
+1. Add a small scheduler/CLI wrapper around the bounded intake and nightly
+   consolidation services; it must remain manual-started in development.
 2. Run and document small real-source smoke collections for each adapter in the
    semiconductor registry; do not use free market data for historical alpha claims.
 3. Extend evidence conflict/outlier clustering, then replay static and evolving
@@ -68,7 +72,7 @@ scripts\setup.ps1
 scripts\run-demos.ps1
 ```
 
-The current suite has 64 passing tests with the command above. Replayable
+The current suite has 66 passing tests with the command above. Replayable
 synthetic demo output is recorded in `docs/reference/demo-results.md`. A live
 NVIDIA 10-K and AMD 10-K produced draft, provenance-validated manufacturing
 dependencies on TSM; a TSMC 20-F correctly produced no proposal when no

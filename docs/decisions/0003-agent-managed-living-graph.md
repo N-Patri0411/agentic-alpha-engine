@@ -20,8 +20,10 @@ and missing support cause the decision to fail or hold.
 
 - Prior graph snapshots are never rewritten; the scorer selects a snapshot by
   as-of time and never writes graph data.
-- Event-driven source intake can create evidence at any time. A scheduler will
-  consolidate it into a nightly snapshot in a later runtime slice.
+- Event-driven source intake is performed through a bounded allow-list service
+  that records a collection receipt. The nightly consolidator reads only
+  as-of-time ledger records. A scheduler/CLI wrapper remains a separate
+  deployment concern and is manual-started during development.
 - The model can interpret evidence but cannot call arbitrary web tools, files,
   or publishing code. Its output is validated before the deterministic policy
   and publisher apply it.
