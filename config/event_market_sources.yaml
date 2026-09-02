@@ -10,6 +10,9 @@ official_earnings:
 
 web_discovery:
   enabled: true
+  provider: tavily
+  api_key_env: TAVILY_API_KEY
+  max_results: 5
   source_tier: discovery
   graph_publication: prohibited
 

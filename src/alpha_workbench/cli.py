@@ -5,13 +5,25 @@ from __future__ import annotations
 import argparse
 import json
 from collections.abc import Sequence
+from datetime import UTC, datetime
 from pathlib import Path
 
+from .adapters import (
+    AlphaVantageDailyAdapter,
+    OfficialEarningsEvidenceAdapter,
+    OfficialInvestorRelationsAdapter,
+    SecFilingAdapter,
+    TavilyDiscoverySearchBackend,
+    WebDiscoveryAdapter,
+    load_source_catalog,
+)
 from .agents import FilingExtractionRequest, build_extraction_agent
 from .backtest import backtest_long_short
 from .data import FrozenCSVMarketDataProvider, load_factors, parse_as_of
+from .evidence.initial_source_run import InitialSemiconductorSourceRun
+from .evidence.ledger import DuckDBEvidenceLedger
 from .graph import SupplyChainGraph
-from .graph_registry import RippleRiskScorer
+from .graph_registry import EntityRegistry, RippleRiskScorer
 from .llm.models import create_llm, load_model_config
 
 
@@ -49,6 +61,22 @@ def _parser() -> argparse.ArgumentParser:
     )
     extract.add_argument("--entities", nargs="+", required=True)
     extract.add_argument("--max-passages", type=int, default=1)
+    collect = commands.add_parser(
+        "collect-initial-sources",
+        help="collect bounded public evidence from every initial source family",
+    )
+    collect.add_argument(
+        "--run-id",
+        default=None,
+        help="optional receipt identifier; default is a UTC timestamp",
+    )
+    collect.add_argument("--preview-limit", type=int, default=24)
+    collect.add_argument(
+        "--ledger",
+        type=Path,
+        default=Path("data/private/evidence.duckdb"),
+        help="ignored local DuckDB evidence-ledger path",
+    )
     return parser
 
 
@@ -83,6 +111,32 @@ def main(argv: Sequence[str] | None = None) -> int:
         print(json.dumps(result.model_dump(mode="json"), indent=2, sort_keys=True))
         return 0
     root = Path.cwd()
+    if args.command == "collect-initial-sources":
+        run_id = args.run_id or f"initial-source-{datetime.now(UTC):%Y%m%dT%H%M%SZ}"
+        ledger_path = args.ledger if args.ledger.is_absolute() else root / args.ledger
+        ledger = DuckDBEvidenceLedger(ledger_path)
+        try:
+            source_run = InitialSemiconductorSourceRun(
+                ledger=ledger,
+                registry=EntityRegistry.from_json(
+                    root / "data" / "entities" / "semiconductor_v1.json"
+                ),
+                catalog=load_source_catalog(
+                    root / "data" / "source_catalog" / "semiconductor_primary_sources_v1.json"
+                ),
+                sec_filings=SecFilingAdapter(root / "data" / "cache" / "sec"),
+                investor_relations=OfficialInvestorRelationsAdapter(root / "data" / "cache" / "ir"),
+                earnings=OfficialEarningsEvidenceAdapter(),
+                web_discovery=WebDiscoveryAdapter(
+                    search_backend=TavilyDiscoverySearchBackend()
+                ),
+                market_data=AlphaVantageDailyAdapter(),
+            )
+            source_report = source_run.collect(run_id=run_id, preview_limit=args.preview_limit)
+        finally:
+            ledger.close()
+        print(json.dumps(source_report.model_dump(mode="json"), indent=2, sort_keys=True))
+        return 0
     entities = set(args.entities)
     agent = build_extraction_agent(
         cache_dir=root / "data" / "cache" / "sec",

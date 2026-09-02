@@ -22,6 +22,13 @@ Evidence-first source layer and bounded living-graph foundation.
 - SEC multi-form, official investor-relations, official earnings, discovery, and
   Alpha Vantage daily-OHLCV adapters all emit that same observation envelope.
   Their normal test runs use frozen fixtures and need neither network nor keys.
+- The bounded `collect-initial-sources` command now runs the initial
+  semiconductor source matrix end-to-end into the ignored local DuckDB ledger:
+  SEC filings and 8-K/6-K earnings exhibits for US/SEC filers, eight official
+  investor-relations/newsroom entries plus bounded same-site release links,
+  Tavily discovery results, and Alpha Vantage daily bars for six tradeable
+  entities. It records a receipt for every attempted adapter call rather than
+  hiding failures.
 - The Extraction Agent now accepts common text observations, rather than only
   SEC-specific requests. It produces the same constrained relationship drafts
   after source collection has preserved the original evidence.
@@ -56,11 +63,14 @@ Evidence-first source layer and bounded living-graph foundation.
    as versioned inputs to an honest backtest.
 4. Add a small scheduler/CLI wrapper around the bounded intake and nightly
    consolidation services; it must remain manual-started in development.
-5. Run and document small real-source smoke collections for each adapter in the
-   semiconductor registry; do not use free market data for historical alpha claims.
-6. Extend evidence conflict/outlier clustering, then replay static and evolving
+5. Add persistent source watermarks so repeated collection selects only new
+   filings, releases, and bars rather than relying solely on ledger idempotency.
+6. Run and document a real whole-source smoke collection after local
+   `ALPHAVANTAGE_API_KEY` and `TAVILY_API_KEY` are configured; do not use free
+   market data for historical alpha claims.
+7. Extend evidence conflict/outlier clustering, then replay static and evolving
    snapshots across documented semiconductor events without future leakage.
-7. Only after those baselines exist, resume feature/alpha-generation work.
+8. Only after those baselines exist, resume feature/alpha-generation work.
 
 ## Known risks
 
@@ -71,6 +81,8 @@ Evidence-first source layer and bounded living-graph foundation.
 - Local Codex plugin configuration does not synchronize; install it on both laptops. The tracked `AGENTS.md` carries the repository rules.
 - React dependencies cannot be verified on this laptop until Node.js LTS is installed.
 - Cloud LLM calls require a locally configured provider key; normal tests use a fake model.
+- A complete real-source run additionally needs local Alpha Vantage and Tavily
+  keys. The SEC, official-IR, and public SEC-earnings paths require no key.
 - The tracked $2/day budget is a policy default; its persistent enforcement ledger is the next agent-runtime safety slice.
 - Filing passage selection is keyword-based and is deliberately conservative. It now excludes
   hidden Inline-XBRL metadata, but it still needs broader section-aware ranking before large-scale
@@ -83,13 +95,14 @@ Evidence-first source layer and bounded living-graph foundation.
 .venv\Scripts\ruff.exe check .
 .venv\Scripts\mypy.exe src
 .venv\Scripts\python.exe -m alpha_workbench ripple-score --snapshot data/graph_snapshots/semiconductor-sec-reviewed-v1.json --shock TSM --severity 0.9 --as-of 2026-05-01T00:00:00+00:00
+.venv\Scripts\python.exe -m alpha_workbench collect-initial-sources --preview-limit 32
 python -m alpha_workbench backtest --prices data/demo_prices.csv --factors data/demo_factors.csv --as-of 2024-01-05T21:00:00+00:00
 python -m alpha_workbench scenario --edges data/semiconductor_edges.json --shock TSM --severity 0.9 --as-of 2024-01-15T00:00:00+00:00
 scripts\setup.ps1
 scripts\run-demos.ps1
 ```
 
-The current suite has 71 passing tests with the command above. Replayable
+The current suite has 75 passing tests with the command above. Replayable
 synthetic demo output is recorded in `docs/reference/demo-results.md`. A live
 NVIDIA 10-K and AMD 10-K produced draft, provenance-validated manufacturing
 dependencies on TSM; a TSMC 20-F correctly produced no proposal when no

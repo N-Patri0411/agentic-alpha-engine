@@ -22,12 +22,14 @@ from ..evidence import EvidenceObservation, SourceDocument, TextEvidence
 from ..evidence.contracts import ExtractionProvenance
 from .base import AdapterHealth
 from .rate_limit import RequestPacer
+from .sec import SecFilingAdapter
 
 EarningsDocumentKind = Literal[
     "official_transcript",
     "official_webcast",
     "official_press_release",
     "sec_8k_exhibit",
+    "sec_6k_exhibit",
 ]
 
 
@@ -47,6 +49,43 @@ class EarningsDocumentRequest(BaseModel):
         if value.tzinfo is None:
             raise ValueError("published_at must include a timezone")
         return value
+
+
+class SecEarningsDocumentDiscoverer:
+    """Find bounded SEC 8-K EX-99 earnings documents for the fallback adapter."""
+
+    def __init__(self, sec_filings: SecFilingAdapter) -> None:
+        self._sec_filings = sec_filings
+
+    def discover(
+        self, *, cik: str, issuer_entity_id: str, max_documents: int = 2
+    ) -> list[EarningsDocumentRequest]:
+        if max_documents < 1:
+            raise ValueError("max_documents must be at least 1")
+        filings = self._sec_filings.discover(
+            {"cik": cik, "forms": ["8-K", "6-K"], "include_exhibits": True}
+        )
+        results: list[EarningsDocumentRequest] = []
+        for filing in filings:
+            if filing.get("document_kind") != "exhibit_99":
+                continue
+            filing_date = datetime.fromisoformat(str(filing["filing_date"])).replace(tzinfo=UTC)
+            form = str(filing["form"])
+            kind: EarningsDocumentKind = "sec_6k_exhibit" if form == "6-K" else "sec_8k_exhibit"
+            results.append(
+                EarningsDocumentRequest.model_validate(
+                    {
+                        "issuer_entity_id": issuer_entity_id,
+                        "source_url": str(filing["source_url"]),
+                        "published_at": filing_date,
+                        "kind": kind,
+                        "title": f"SEC earnings exhibit {filing['accession_number']}",
+                    }
+                )
+            )
+            if len(results) == max_documents:
+                break
+        return results
 
 
 class _VisibleTextParser(HTMLParser):
@@ -111,8 +150,8 @@ def _source_metadata(
     Literal["primary", "official"],
     str,
 ]:
-    if kind == "sec_8k_exhibit":
-        return ("sec_filing", "primary", "SEC 8-K earnings exhibit; public filing")
+    if kind in {"sec_8k_exhibit", "sec_6k_exhibit"}:
+        return ("sec_filing", "primary", "SEC earnings exhibit; public filing")
     if kind == "official_press_release":
         return ("investor_relations", "official", "Official investor-relations earnings release")
     if kind == "official_webcast":

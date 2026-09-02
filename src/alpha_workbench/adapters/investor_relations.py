@@ -11,7 +11,9 @@ import time
 import xml.etree.ElementTree as ElementTree
 from datetime import UTC, datetime
 from email.utils import parsedate_to_datetime
+from html.parser import HTMLParser
 from pathlib import Path
+from urllib.parse import urljoin, urlparse
 
 import httpx
 
@@ -26,6 +28,19 @@ from ..evidence.contracts import ExtractionProvenance
 from .base import AdapterHealth
 from .primary_documents import bounded_quote, visible_text
 from .source_catalog import CatalogSource
+
+
+class _NewsroomLinkParser(HTMLParser):
+    def __init__(self) -> None:
+        super().__init__()
+        self.hrefs: list[str] = []
+
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        if tag.lower() != "a":
+            return
+        href = dict(attrs).get("href")
+        if href:
+            self.hrefs.append(href)
 
 
 class OfficialInvestorRelationsAdapter:
@@ -52,8 +67,9 @@ class OfficialInvestorRelationsAdapter:
     def collect(self, query: dict[str, object]) -> list[EvidenceObservation]:
         """Collect configured sources passed as ``CatalogSource`` values.
 
-        Query keys: ``sources`` (required), ``run_id`` (optional), and
-        ``max_items_per_feed`` (optional). No arbitrary URL is accepted here.
+        Query keys: ``sources`` (required), ``run_id`` (optional),
+        ``max_items_per_feed`` (optional), and ``max_linked_pages`` (optional).
+        No arbitrary URL is accepted here.
         """
 
         source_values = query.get("sources")
@@ -72,6 +88,9 @@ class OfficialInvestorRelationsAdapter:
         max_items = int(str(query.get("max_items_per_feed", 5)))
         if max_items < 1:
             raise ValueError("max_items_per_feed must be at least 1")
+        max_linked_pages = int(str(query.get("max_linked_pages", 0)))
+        if max_linked_pages < 0 or max_linked_pages > 5:
+            raise ValueError("max_linked_pages must be between 0 and 5")
 
         observations: list[EvidenceObservation] = []
         for source in sources:
@@ -85,6 +104,11 @@ class OfficialInvestorRelationsAdapter:
                 observation = self._page_observation(source, raw, retrieved_at, run_id)
                 if observation is not None:
                     observations.append(observation)
+                observations.extend(
+                    self._linked_page_observations(
+                        source, raw, run_id=run_id, max_linked_pages=max_linked_pages
+                    )
+                )
         return observations
 
     def collect_and_record(
@@ -145,7 +169,7 @@ class OfficialInvestorRelationsAdapter:
             usage_note=f"{source.usage_note}; page timestamp unavailable, using retrieval time",
             title=f"Official investor-relations page for {source.issuer_entity_id}",
         )
-        excerpt = text[:1200]
+        excerpt = self._relevant_excerpt(text)
         return self._text_observation(
             document=document,
             text=excerpt,
@@ -153,6 +177,88 @@ class OfficialInvestorRelationsAdapter:
             identifier=content_hash,
             section="official_newsroom_page",
         )
+
+    def _linked_page_observations(
+        self,
+        source: CatalogSource,
+        landing_page: bytes,
+        *,
+        run_id: str,
+        max_linked_pages: int,
+    ) -> list[EvidenceObservation]:
+        """Follow a small allow-listed set of same-site newsroom release links."""
+
+        if max_linked_pages == 0:
+            return []
+        parser = _NewsroomLinkParser()
+        parser.feed(landing_page.decode("utf-8", errors="replace"))
+        source_host = urlparse(source.url).netloc.lower()
+        links: list[str] = []
+        for href in parser.hrefs:
+            candidate = urljoin(source.url, href)
+            parsed = urlparse(candidate)
+            if parsed.scheme not in {"http", "https"} or parsed.netloc.lower() != source_host:
+                continue
+            path = parsed.path.lower()
+            if not any(token in path for token in ("news", "press", "release", "article", "story")):
+                continue
+            if candidate != source.url and candidate not in links:
+                links.append(candidate)
+        observations: list[EvidenceObservation] = []
+        for link in links[:max_linked_pages]:
+            raw, retrieved_at = self._fetch(link)
+            self._write_cache(raw)
+            text = visible_text(raw)
+            if not text:
+                continue
+            content_hash = hashlib.sha256(raw).hexdigest()
+            document = SourceDocument(
+                source_kind="investor_relations",
+                source_tier="official",
+                source_adapter=self.name,
+                source_url=link,
+                content_sha256=content_hash,
+                issuer_entity_id=source.issuer_entity_id,
+                observed_at=retrieved_at,
+                available_at=retrieved_at,
+                retrieved_at=retrieved_at,
+                usage_note=(
+                    f"{source.usage_note}; official linked newsroom page; "
+                    "publication timestamp unavailable, using retrieval time"
+                ),
+                title=f"Official linked newsroom page for {source.issuer_entity_id}",
+            )
+            observations.append(
+                self._text_observation(
+                    document=document,
+                    text=self._relevant_excerpt(text),
+                    run_id=run_id,
+                    identifier=content_hash,
+                    section="official_linked_newsroom_page",
+                )
+            )
+        return observations
+
+    @staticmethod
+    def _relevant_excerpt(text: str) -> str:
+        """Prefer an explicit relationship window while retaining a bounded fallback."""
+
+        lowered = text.lower()
+        keywords = (
+            "rely on",
+            "relies on",
+            "supply chain",
+            "supplier",
+            "manufactur",
+            "capacity",
+            "foundry",
+            "customer",
+        )
+        matches = [lowered.find(keyword) for keyword in keywords if lowered.find(keyword) >= 0]
+        if not matches:
+            return text[:1200]
+        start = max(0, min(matches) - 400)
+        return text[start : start + 1200]
 
     def _feed_observations(
         self,

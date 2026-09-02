@@ -11,10 +11,11 @@ from .base import (
     ResearchWebAdapter,
     SourceAdapter,
 )
-from .earnings import OfficialEarningsEvidenceAdapter
+from .earnings import OfficialEarningsEvidenceAdapter, SecEarningsDocumentDiscoverer
 from .investor_relations import OfficialInvestorRelationsAdapter
 from .sec import SecFilingAdapter
 from .source_catalog import SourceCatalog, load_source_catalog
+from .tavily import TavilyDiscoverySearchBackend
 from .web_discovery import WebDiscoveryAdapter
 
 __all__ = [
@@ -28,9 +29,11 @@ __all__ = [
     "OfficialInvestorRelationsAdapter",
     "PatentRegulatoryAdapter",
     "ResearchWebAdapter",
+    "SecEarningsDocumentDiscoverer",
     "SecFilingAdapter",
     "SourceAdapter",
     "SourceCatalog",
+    "TavilyDiscoverySearchBackend",
     "WebDiscoveryAdapter",
     "load_source_catalog",
 ]

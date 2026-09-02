@@ -19,4 +19,9 @@ Adjudicator stages.
 
 All adapters use local, credential-free fixtures in normal tests. A live Alpha
 Vantage collection is only possible after adding `ALPHAVANTAGE_API_KEY` to the
-ignored root `.env` file.
+ignored root `.env` file. The initial provider-neutral discovery implementation
+is `TavilyDiscoverySearchBackend`, enabled by local `TAVILY_API_KEY`; it uses
+the REST endpoint directly rather than placing a vendor SDK inside an agent.
+
+See [source setup and first live run](../reference/source-setup-and-live-run.md)
+for the current bounded whole-source command and its retained outputs.

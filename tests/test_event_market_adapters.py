@@ -10,6 +10,7 @@ import pytest
 from alpha_workbench.adapters.alpha_vantage import AlphaVantageDailyAdapter
 from alpha_workbench.adapters.earnings import OfficialEarningsEvidenceAdapter
 from alpha_workbench.adapters.rate_limit import RequestPacer
+from alpha_workbench.adapters.tavily import TavilyDiscoverySearchBackend
 from alpha_workbench.adapters.web_discovery import DiscoveryResult, WebDiscoveryAdapter
 
 FIXTURES = Path(__file__).parent / "fixtures" / "event_market"
@@ -157,6 +158,37 @@ def test_web_discovery_uses_injected_backend_and_requires_one_when_results_missi
         WebDiscoveryAdapter(now=lambda: NOW).collect(
             {"issuer_entity_id": "NVDA", "query": "NVIDIA supply chain"}
         )
+
+
+def test_tavily_backend_normalizes_provider_results_without_exposing_key() -> None:
+    requests: list[httpx.Request] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        return httpx.Response(
+            200,
+            json={
+                "results": [
+                    {
+                        "url": "https://news.example.test/report",
+                        "title": "Capacity report",
+                        "content": "The report discusses foundry capacity.",
+                        "published_date": "2026-01-09T12:00:00Z",
+                    }
+                ]
+            },
+        )
+
+    backend = TavilyDiscoverySearchBackend(
+        api_key="fixture-key",
+        client=httpx.Client(transport=httpx.MockTransport(handler)),
+        now=lambda: NOW,
+    )
+    results = backend.search("NVIDIA supply chain")
+
+    assert results[0].title == "Capacity report"
+    assert results[0].published_at == datetime(2026, 1, 9, 12, tzinfo=UTC)
+    assert requests[0].headers["Authorization"] == "Bearer fixture-key"
 
 
 def test_alpha_vantage_daily_adapter_emits_development_only_market_bars() -> None:

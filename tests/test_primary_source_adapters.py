@@ -6,6 +6,7 @@ from pathlib import Path
 import httpx
 import pytest
 
+from alpha_workbench.adapters.earnings import SecEarningsDocumentDiscoverer
 from alpha_workbench.adapters.investor_relations import OfficialInvestorRelationsAdapter
 from alpha_workbench.adapters.sec import SecFilingAdapter
 from alpha_workbench.adapters.source_catalog import CatalogSource, load_source_catalog
@@ -220,6 +221,75 @@ def test_official_ir_adapter_handles_atom_without_network(tmp_path: Path) -> Non
     assert len(observations) == 1
     assert observations[0].document.source_url == "https://ir.example.test/atom-release"
     assert observations[0].document.available_at == datetime(2026, 6, 2, 14, 30, tzinfo=UTC)
+
+
+def test_official_ir_adapter_collects_bounded_same_site_newsroom_pages(tmp_path: Path) -> None:
+    landing_page = b"""
+    <html><body><a href="/news/release-one">Release</a>
+    <a href="https://untrusted.example.test/news/ignore">Ignore</a></body></html>
+    """
+    release_page = b"<p>We rely on a strategic foundry partner for manufacturing capacity.</p>"
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        content = release_page if request.url.path.endswith("release-one") else landing_page
+        return httpx.Response(200, content=content)
+
+    adapter = OfficialInvestorRelationsAdapter(
+        tmp_path / "ir", client=httpx.Client(transport=httpx.MockTransport(handler))
+    )
+    observations = adapter.collect(
+        {
+            "run_id": "linked-page-fixture",
+            "max_linked_pages": 1,
+            "sources": [
+                {
+                    "issuer_entity_id": "NVDA",
+                    "source_kind": "investor_relations",
+                    "url": "https://ir.example.test/news",
+                    "usage_note": "official fixture page",
+                }
+            ],
+        }
+    )
+
+    assert len(observations) == 2
+    linked = next(item for item in observations if "release-one" in item.document.source_url)
+    assert linked.payload.section == "official_linked_newsroom_page"
+    assert "rely on" in linked.payload.text
+
+
+def test_sec_earnings_discoverer_finds_bounded_8k_and_6k_exhibits(tmp_path: Path) -> None:
+    metadata = {
+        "filings": {
+            "recent": {
+                "form": ["8-K", "6-K"],
+                "accessionNumber": ["0001-26-000001", "0001-26-000002"],
+                "primaryDocument": ["event.htm", "foreign.htm"],
+                "filingDate": ["2026-01-01", "2026-02-01"],
+            }
+        }
+    }
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.host == "data.sec.gov":
+            return httpx.Response(200, json=metadata)
+        if request.url.path.endswith("index.json"):
+            return httpx.Response(
+                200, json={"directory": {"item": [{"name": "earnings-ex99.htm"}]}}
+            )
+        return httpx.Response(404)
+
+    sec = SecFilingAdapter(
+        tmp_path / "sec", user_agent="Test test@example.com", client=httpx.Client(
+            transport=httpx.MockTransport(handler)
+        )
+    )
+    documents = SecEarningsDocumentDiscoverer(sec).discover(
+        cik="1045810", issuer_entity_id="NVDA", max_documents=2
+    )
+
+    assert [document.kind for document in documents] == ["sec_8k_exhibit", "sec_6k_exhibit"]
+    assert all("earnings-ex99.htm" in str(document.source_url) for document in documents)
 
 
 def test_official_ir_adapter_rejects_malformed_or_unavailable_sources(tmp_path: Path) -> None:

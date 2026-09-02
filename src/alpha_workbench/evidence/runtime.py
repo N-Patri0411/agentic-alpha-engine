@@ -60,6 +60,22 @@ class EvidenceIntakeService:
         self._ledger.append_run_receipt(receipt)
         return receipt
 
+    def record_failure(
+        self, *, adapter_name: str, run_id: str, error: Exception
+    ) -> EvidenceRunReceipt:
+        """Record a bounded pre-collection failure, such as document discovery."""
+
+        started_at = datetime.now(UTC)
+        receipt = self._receipt(
+            adapter_name=adapter_name,
+            run_id=run_id,
+            started_at=started_at,
+            status="failed",
+            errors=(f"{type(error).__name__}: {error}",),
+        )
+        self._ledger.append_run_receipt(receipt)
+        return receipt
+
     @staticmethod
     def _receipt(
         *,

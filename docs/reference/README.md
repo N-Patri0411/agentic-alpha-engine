@@ -8,6 +8,7 @@ This folder is the beginner-friendly, Git-tracked learning companion for the pro
 2. [Backtesting and scenarios](backtesting-and-scenarios.md) explains the current code, demo data, formulas, and supply-chain mapping approach.
 3. [Verified demo results](demo-results.md) shows how to replay and interpret the current demos.
 4. [Semiconductor domain mapping plan](../research/semiconductor-domain-mapping-plan.md) explains the next research milestone.
+5. [Source setup and first live evidence run](source-setup-and-live-run.md) explains the live source adapters and their output.
 
 ## Ground rules
 
