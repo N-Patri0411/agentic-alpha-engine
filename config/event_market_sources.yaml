@@ -1,0 +1,21 @@
+# Credential-free policy/configuration. Put ALPHAVANTAGE_API_KEY only in local .env.
+official_earnings:
+  enabled: true
+  min_interval_seconds: 0.2
+  accepted_documents:
+    - official_transcript
+    - official_webcast
+    - official_press_release
+    - sec_8k_exhibit
+
+web_discovery:
+  enabled: true
+  source_tier: discovery
+  graph_publication: prohibited
+
+alpha_vantage_daily:
+  enabled: true
+  api_key_env: ALPHAVANTAGE_API_KEY
+  min_interval_seconds: 12.0
+  outputsize: compact
+  usage_note: development-only; not certified point-in-time data
