@@ -2,9 +2,11 @@
 
 from .contracts import (
     EventSignal,
+    ExtractionProvenance,
     EvidenceObservation,
     EvidencePayload,
     EvidenceRunReceipt,
+    ExtractionProvenance,
     MarketBar,
     SourceCatalogEntry,
     SourceDocument,
@@ -19,6 +21,7 @@ __all__ = [
     "EvidencePayload",
     "EvidenceRunReceipt",
     "EventSignal",
+    "ExtractionProvenance",
     "MarketBar",
     "SourceCatalogEntry",
     "SourceDocument",
