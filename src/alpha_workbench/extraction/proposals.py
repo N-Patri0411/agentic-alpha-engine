@@ -69,7 +69,9 @@ class EvidenceProposalExtractor:
                 "customer_concentration, competitive_substitution, ip_or_license, or "
                 "geographic_or_regulatory. evidence_quote must be an exact quote from the "
                 "passage and suggested_confidence must be a number from 0 to 1. Do not nest "
-                "the response or omit any required key."
+                "the response or omit any required key. Graph direction is always upstream "
+                "supplier/cause to downstream dependent: if NVIDIA says it relies on TSMC, "
+                "use source_entity_id TSM and target_entity_id NVDA."
             ),
             user=(
                 f"Known entity IDs: {sorted(self._known_entities)}\n"

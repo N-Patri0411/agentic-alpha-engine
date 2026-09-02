@@ -163,6 +163,17 @@ def test_adjudicator_publishes_a_new_snapshot_only_once(tmp_path: Path) -> None:
     assert report.published_snapshot_id == "fixture-published"
 
 
+def test_adjudicator_normalizes_only_documented_model_aliases() -> None:
+    normalized = GraphAdjudicatorAgent._normalize_model_response(
+        {"action": "approve", "state_delta": 0.6}
+    )
+
+    assert normalized == {
+        "action": "approve_edge",
+        "state_delta": {"dependency_strength": 0.6},
+    }
+
+
 def test_adjudicator_decays_state_and_holds_future_observations() -> None:
     current = GraphSnapshot.from_json(SNAPSHOT).model_copy(update={"created_at": AVAILABLE_AT})
     future_observation = _observation()

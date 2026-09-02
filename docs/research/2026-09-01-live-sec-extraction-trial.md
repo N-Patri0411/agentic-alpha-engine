@@ -10,8 +10,8 @@ drafts only: they were not published into the supply-chain graph.
 
 | Issuer / form | Filing date | Result | Deterministic evidence check |
 | --- | --- | --- | --- |
-| NVIDIA / 10-K | 2026-02-25 | Draft `NVDA -> TSM`, `manufacturing_dependency` | pass |
-| AMD / 10-K | 2026-02-04 | Draft `AMD -> TSM`, `manufacturing_dependency` | pass |
+| NVIDIA / 10-K | 2026-02-25 | Draft `TSM -> NVDA`, `manufacturing_dependency` | pass |
+| AMD / 10-K | 2026-02-04 | Draft `TSM -> AMD`, `manufacturing_dependency` | pass |
 | TSMC / 20-F | 2026-04-16 | No proposal | not applicable |
 
 NVIDIA's selected passage expressly identifies TSMC and Samsung as foundries
@@ -51,3 +51,26 @@ example, NVIDIA's "we") without inventing an entity.
   inbox are not built yet.
 - A validator proves only provenance, entity membership, and exact quoting. It
   does not establish economic materiality, edge strength, or investability.
+
+## 2026-09-02 end-to-end A2A trial
+
+Two bounded, live trials used one ranked passage each from the current public
+NVIDIA and AMD 10-K filings. Each passed through the durable
+Extraction-to-Graph A2A workflow with Luna configured for both agents:
+
+| Issuer | Extraction result | Graph decision | Trial artifact |
+| --- | --- | --- | --- |
+| NVIDIA | `TSM -> NVDA`, manufacturing dependency | `approve_edge` | immutable scratch snapshot |
+| AMD | `TSM -> AMD`, manufacturing dependency | `approve_edge` | immutable scratch snapshot |
+
+The trial artifacts and message databases remain ignored local files. Neither
+snapshot was promoted into the reviewed project graph. Both relationships were
+already present in the baseline snapshot, so this run validates source
+collection, message hand-off, model output, and graph publication—not a new
+topology claim or a production weight update.
+
+The first attempt correctly failed closed: the Graph model used the common
+aliases `approve` and scalar `state_delta` rather than the strict contract. The
+adjudicator now accepts only those documented aliases, maps a scalar delta only
+to dependency strength, and still rejects all unknown actions or shapes. This
+compatibility rule has a regression test.

@@ -41,6 +41,9 @@ Evidence-first source layer and bounded living-graph foundation.
   requested event time, rejects future-dated event evidence, and writes a
   non-overwritable scenario-run receipt. A typed graph-view export provides
   node risk severity and edge state for the future React/Cytoscape UI.
+- A bounded live A2A trial successfully ran Luna for both Extraction and Graph
+  Adjudication on current public NVIDIA and AMD 10-K passages. Its scratch
+  snapshots are ignored local artifacts; no unreviewed output was promoted.
 - Beginner-friendly explanations are tracked under `docs/reference/` for both laptops.
 
 ## Next slices
@@ -86,7 +89,7 @@ scripts\setup.ps1
 scripts\run-demos.ps1
 ```
 
-The current suite has 70 passing tests with the command above. Replayable
+The current suite has 71 passing tests with the command above. Replayable
 synthetic demo output is recorded in `docs/reference/demo-results.md`. A live
 NVIDIA 10-K and AMD 10-K produced draft, provenance-validated manufacturing
 dependencies on TSM; a TSMC 20-F correctly produced no proposal when no

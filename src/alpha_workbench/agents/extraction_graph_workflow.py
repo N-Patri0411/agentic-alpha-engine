@@ -150,6 +150,7 @@ class ExtractionGraphWorkflow:
             as_of_time=payload.as_of_time,
             next_snapshot_id=next_snapshot_id,
             snapshot_path=snapshot_path,
+            validated_proposals=payload.validated_proposals,
         )
         snapshot_hash = hashlib.sha256(snapshot_path.read_bytes()).hexdigest()
         self._bus.acknowledge(str(message.message_id))

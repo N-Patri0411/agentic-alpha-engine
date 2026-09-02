@@ -12,6 +12,7 @@ from uuid import UUID
 from pydantic import BaseModel, Field, model_validator
 
 from ..evidence import EventSignal, EvidenceObservation, TextEvidence
+from ..extraction import EdgeProposal
 from ..graph_registry import (
     EntityRegistry,
     GraphEvidence,
@@ -108,6 +109,7 @@ class GraphAdjudicatorAgent:
         current_snapshot: GraphSnapshot,
         as_of_time: datetime,
         next_snapshot_id: str,
+        validated_proposals: list[EdgeProposal] | None = None,
     ) -> tuple[GraphSnapshot, GraphAdjudicationReport]:
         """Create a next snapshot in memory; callers decide whether to publish it."""
 
@@ -131,7 +133,9 @@ class GraphAdjudicatorAgent:
         )
         decisions: list[GraphAdjudication] = []
         for resolved_entity_tuple, cluster in clusters.items():
-            decision = self._decide_cluster(cluster, set(resolved_entity_tuple))
+            decision = self._decide_cluster(
+                cluster, set(resolved_entity_tuple), validated_proposals or []
+            )
             decision = self._apply_discovery_guard(decision, cluster)
             decisions.append(decision)
             if decision.action in {"hold", "reject"}:
@@ -161,6 +165,7 @@ class GraphAdjudicatorAgent:
         as_of_time: datetime,
         next_snapshot_id: str,
         snapshot_path: Path,
+        validated_proposals: list[EdgeProposal] | None = None,
     ) -> GraphAdjudicationReport:
         """Publish one new immutable snapshot; existing snapshots cannot be changed."""
 
@@ -169,6 +174,7 @@ class GraphAdjudicatorAgent:
             current_snapshot=current_snapshot,
             as_of_time=as_of_time,
             next_snapshot_id=next_snapshot_id,
+            validated_proposals=validated_proposals,
         )
         self._publisher.publish_new(snapshot_path, snapshot)
         return report
@@ -184,7 +190,10 @@ class GraphAdjudicatorAgent:
         return resolved.intersection(self._registry.entity_ids)
 
     def _decide_cluster(
-        self, cluster: list[EvidenceObservation], resolved_entities: set[str]
+        self,
+        cluster: list[EvidenceObservation],
+        resolved_entities: set[str],
+        validated_proposals: list[EdgeProposal],
     ) -> GraphAdjudication:
         supported = [
             observation
@@ -211,22 +220,43 @@ class GraphAdjudicatorAgent:
                 f"({observation.document.source_tier}): {content}"
             )
         evidence_text = "\n\n".join(evidence_parts)
+        cluster_hashes = {item.document.content_sha256 for item in cluster}
+        draft_context = [
+            {
+                "source_entity_id": proposal.source_entity_id,
+                "target_entity_id": proposal.target_entity_id,
+                "relationship_type": proposal.relationship_type,
+                "evidence_quote": proposal.evidence_quote,
+            }
+            for proposal in validated_proposals
+            if proposal.passage.snapshot_sha256 in cluster_hashes
+        ]
         raw = self._llm.complete_json(
             system=(
-                "You are a graph adjudicator. Use only the supplied observation. Return one "
-                "flat JSON GraphAdjudication. Graph direction is upstream supplier or cause to "
-                "downstream dependent. You may approve a relationship only when the text "
-                "directly supports it. State deltas must be between -1 and 1. Otherwise choose "
-                "hold or reject. Never invent entities, evidence, or relationship types."
+                "You are a graph adjudicator. Use only the supplied evidence and validated "
+                "draft. Return exactly one flat JSON object, never an array or nested object. "
+                "The object must include action, upstream_entity_id, downstream_entity_id, "
+                "relationship_type, state_delta, supporting_observation_ids, and rationale. "
+                "action must be exactly one of approve_edge, update_state, retire_edge, hold, "
+                "or reject. state_delta must be an object such as {\"dependency_strength\": 0.2, "
+                "\"substitutability\": 0.0, \"confidence\": 0.0, \"capacity_stress\": 0.0, "
+                "\"geographic_regulatory_stress\": 0.0}. "
+                "Graph direction is upstream supplier/cause to downstream dependent: if NVIDIA "
+                "relies on TSMC, use upstream_entity_id TSM and downstream_entity_id NVDA. "
+                "You may approve a relationship only when the text directly supports it. State "
+                "deltas must be between -1 and 1. Otherwise choose hold or reject. Never "
+                "invent entities, evidence, or relationship types."
             ),
             user=(
                 f"Approved entity IDs: {sorted(resolved_entities)}\n"
                 f"Allowed observation IDs: {[str(item.observation_id) for item in supported]}\n"
+                f"Validated extraction drafts: {draft_context}\n"
                 f"Evidence: {evidence_text}"
             ),
         )
         if not isinstance(raw, dict):
             raise ValueError("graph adjudicator model response must be a JSON object")
+        raw = self._normalize_model_response(raw)
         raw.setdefault(
             "supporting_observation_ids", [str(item.observation_id) for item in supported]
         )
@@ -235,6 +265,30 @@ class GraphAdjudicatorAgent:
         if not set(decision.supporting_observation_ids).issubset(allowed_ids):
             raise ValueError("decision referenced an observation outside its adjudication cluster")
         return decision
+
+    @staticmethod
+    def _normalize_model_response(raw: dict[str, object]) -> dict[str, object]:
+        """Accept only two predictable provider/model formatting aliases.
+
+        This is intentionally not a permissive repair layer: unknown actions,
+        nested structures, and extra semantic fields still fail Pydantic
+        validation. A scalar state delta has one unambiguous interpretation in
+        this early graph schema: a dependency-strength adjustment.
+        """
+
+        normalized = dict(raw)
+        action_aliases = {
+            "approve": "approve_edge",
+            "update": "update_state",
+            "retire": "retire_edge",
+        }
+        action = normalized.get("action")
+        if isinstance(action, str) and action in action_aliases:
+            normalized["action"] = action_aliases[action]
+        delta = normalized.get("state_delta")
+        if isinstance(delta, int | float) and not isinstance(delta, bool):
+            normalized["state_delta"] = {"dependency_strength": float(delta)}
+        return normalized
 
     @staticmethod
     def _apply_discovery_guard(
