@@ -2,7 +2,6 @@
 
 from .contracts import (
     EventSignal,
-    ExtractionProvenance,
     EvidenceObservation,
     EvidencePayload,
     EvidenceRunReceipt,
