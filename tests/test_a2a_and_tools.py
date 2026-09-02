@@ -1,5 +1,6 @@
 from datetime import UTC, datetime
 from pathlib import Path
+from uuid import uuid4
 
 import pytest
 
@@ -16,6 +17,8 @@ def test_message_bus_delivers_and_acknowledges_once(tmp_path: Path) -> None:
     )
     assert bus.publish(message) is True
     assert bus.publish(message) is False
+    duplicate_delivery = message.model_copy(update={"message_id": uuid4()})
+    assert bus.publish(duplicate_delivery) is False
     assert bus.inbox("extraction")[0].message_id == message.message_id
     bus.acknowledge(str(message.message_id))
     assert bus.inbox("extraction") == []

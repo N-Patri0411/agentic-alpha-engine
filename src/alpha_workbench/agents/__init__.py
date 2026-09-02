@@ -8,6 +8,7 @@ from .extraction import (
     ObservationExtractionRequest,
     build_extraction_agent,
 )
+from .extraction_graph_workflow import ExtractionGraphWorkflow
 from .gatekeeper import GatekeeperAgent
 from .graph_adjudicator import GraphAdjudicatorAgent
 from .monitor import MonitorAgent
@@ -19,6 +20,7 @@ __all__ = [
     "AlphaGeneratorAgent",
     "BacktesterAgent",
     "ExtractionAgent",
+    "ExtractionGraphWorkflow",
     "FilingExtractionRequest",
     "GraphAdjudicatorAgent",
     "GatekeeperAgent",

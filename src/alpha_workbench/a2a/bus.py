@@ -17,25 +17,38 @@ class DuckDBMessageBus:
             """
             create table if not exists a2a_messages (
                 message_id varchar primary key,
+                idempotency_key varchar unique not null,
                 recipient varchar not null,
                 status varchar not null,
                 payload json not null
             )
             """
         )
+        self._connection.execute(
+            "alter table a2a_messages add column if not exists idempotency_key varchar"
+        )
+        self._connection.execute(
+            "update a2a_messages set idempotency_key = "
+            "json_extract_string(payload, '$.idempotency_key') where idempotency_key is null"
+        )
+        self._connection.execute(
+            "create unique index if not exists a2a_messages_idempotency "
+            "on a2a_messages(idempotency_key)"
+        )
 
     def publish(self, message: A2AMessage) -> bool:
         """Write once by idempotency key; duplicate deliveries are harmless."""
 
         exists = self._connection.execute(
-            "select 1 from a2a_messages where message_id = ?", [str(message.message_id)]
+            "select 1 from a2a_messages where idempotency_key = ?", [message.idempotency_key]
         ).fetchone()
         if exists is not None:
             return False
         self._connection.execute(
-            "insert into a2a_messages values (?, ?, 'pending', ?)",
+            "insert into a2a_messages values (?, ?, ?, 'pending', ?)",
             [
                 str(message.message_id),
+                message.idempotency_key,
                 message.recipient,
                 json.dumps(message.model_dump(mode="json")),
             ],

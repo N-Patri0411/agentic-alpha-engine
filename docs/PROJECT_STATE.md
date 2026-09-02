@@ -33,17 +33,25 @@ Evidence-first source layer and bounded living-graph foundation.
   writes a completed or failed collection receipt. `NightlyGraphConsolidator`
   reads ledger observations at a declared as-of time and routes them through the
   adjudicator to a write-once snapshot path.
+- The first durable A2A workflow is live: an Extraction command produces a
+  provenance-validated Graph Adjudicator review message, which returns an
+  immutable-snapshot receipt to the Orchestrator. Duplicate deliveries are
+  rejected through message idempotency keys.
 - Beginner-friendly explanations are tracked under `docs/reference/` for both laptops.
 
 ## Next slices
 
-1. Add a small scheduler/CLI wrapper around the bounded intake and nightly
+1. Add an incremental evidence watermark so graph workflows process only new or
+   changed observations, while keeping a full replay option for research.
+2. Build immutable historical-event and scenario-run records, then add a
+   timeline/snapshot-diff export for the future React graph viewer.
+3. Add a small scheduler/CLI wrapper around the bounded intake and nightly
    consolidation services; it must remain manual-started in development.
-2. Run and document small real-source smoke collections for each adapter in the
+4. Run and document small real-source smoke collections for each adapter in the
    semiconductor registry; do not use free market data for historical alpha claims.
-3. Extend evidence conflict/outlier clustering, then replay static and evolving
+5. Extend evidence conflict/outlier clustering, then replay static and evolving
    snapshots across documented semiconductor events without future leakage.
-4. Only after those baselines exist, resume feature/alpha-generation work.
+6. Only after those baselines exist, resume feature/alpha-generation work.
 
 ## Known risks
 
@@ -72,7 +80,7 @@ scripts\setup.ps1
 scripts\run-demos.ps1
 ```
 
-The current suite has 66 passing tests with the command above. Replayable
+The current suite has 67 passing tests with the command above. Replayable
 synthetic demo output is recorded in `docs/reference/demo-results.md`. A live
 NVIDIA 10-K and AMD 10-K produced draft, provenance-validated manufacturing
 dependencies on TSM; a TSMC 20-F correctly produced no proposal when no
