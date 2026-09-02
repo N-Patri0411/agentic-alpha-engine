@@ -28,7 +28,7 @@ def test_registry_only_resolves_explicitly_granted_tools() -> None:
         registry.register(name, lambda payload: payload)
     extraction_tools = registry.resolve("extraction", manifest)
     assert "sec_filings" in extraction_tools
-    assert "market_data" not in extraction_tools
+    assert "market_data" in extraction_tools
     with pytest.raises(ValueError, match="unregistered tools"):
         registry.resolve("backtester", manifest)
 

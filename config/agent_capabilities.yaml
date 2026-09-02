@@ -2,7 +2,8 @@
 # to each role. Adding a tool never grants it to an agent by accident.
 agents:
   orchestrator: [message_bus, run_ledger]
-  extraction: [entity_registry, sec_filings, section_selector, evidence_validator, ripple_risk, proposal_store]
+  extraction: [entity_registry, sec_filings, investor_relations, earnings_evidence, web_discovery, market_data, section_selector, evidence_validator, ripple_risk, proposal_store]
+  graph_adjudicator: [entity_registry, evidence_ledger, graph_snapshot_publisher]
   alpha_generator: [feature_catalog, candidate_store]
   backtester: [market_data, backtest_runner, report_store]
   gatekeeper: [policy_evaluator, signal_library]

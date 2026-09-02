@@ -10,6 +10,7 @@ from pydantic import BaseModel, Field
 AgentName = Literal[
     "orchestrator",
     "extraction",
+    "graph_adjudicator",
     "alpha_generator",
     "backtester",
     "gatekeeper",
@@ -52,6 +53,7 @@ class AgentResult(BaseModel):
 class NextAction(BaseModel):
     action: Literal[
         "extraction",
+        "graph_adjudicator",
         "alpha_generator",
         "backtester",
         "gatekeeper",

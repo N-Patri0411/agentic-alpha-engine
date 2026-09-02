@@ -60,7 +60,7 @@ class GraphEvidence(BaseModel):
 
 
 class ReviewDecision(BaseModel):
-    """Human decision required before a draft can enter an immutable snapshot."""
+    """Governed decision required before a draft can enter an immutable snapshot."""
 
     reviewed_by: str = Field(min_length=1)
     reviewed_at: datetime
@@ -86,6 +86,10 @@ class ReviewedGraphEdge(BaseModel):
     dependency_strength: float = Field(ge=0, le=1)
     substitutability: float = Field(ge=0, le=1)
     confidence: float = Field(ge=0, le=1)
+    capacity_stress: float = Field(default=0, ge=0, le=1)
+    geographic_regulatory_stress: float = Field(default=0, ge=0, le=1)
+    freshness: float = Field(default=1, ge=0, le=1)
+    evidence_support: float = Field(default=0, ge=0, le=1)
     effective_from: datetime
     effective_to: datetime | None = None
     evidence: GraphEvidence
@@ -96,12 +100,26 @@ class ReviewedGraphEdge(BaseModel):
         if self.upstream_entity_id == self.downstream_entity_id:
             raise ValueError("graph edge cannot connect an entity to itself")
         if self.review.decision != "approved":
-            raise ValueError("only human-approved edges may appear in a graph snapshot")
+            raise ValueError("only approved edges may appear in a graph snapshot")
         return self
 
 
 def _edges_digest(edges: list[ReviewedGraphEdge]) -> str:
     payload = [edge.model_dump(mode="json") for edge in edges]
+    canonical = json.dumps(payload, sort_keys=True, separators=(",", ":"))
+    return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+
+
+def _legacy_edges_digest(edges: list[ReviewedGraphEdge]) -> str:
+    """Validate schema-v1 snapshots created before temporal state fields existed."""
+
+    temporal_fields = {
+        "capacity_stress",
+        "geographic_regulatory_stress",
+        "freshness",
+        "evidence_support",
+    }
+    payload = [edge.model_dump(mode="json", exclude=temporal_fields) for edge in edges]
     canonical = json.dumps(payload, sort_keys=True, separators=(",", ":"))
     return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
 
@@ -118,7 +136,7 @@ class GraphSnapshot(BaseModel):
 
     @model_validator(mode="after")
     def digest_matches_edges(self) -> GraphSnapshot:
-        if self.edges_sha256 != _edges_digest(self.edges):
+        if self.edges_sha256 not in {_edges_digest(self.edges), _legacy_edges_digest(self.edges)}:
             raise ValueError("graph snapshot edge digest does not match its contents")
         return self
 
@@ -180,7 +198,16 @@ class RippleRiskScorer:
                     target=edge.downstream_entity_id,
                     relationship=edge.relationship_type,
                     source_url=edge.evidence.source_url,
-                    weight=edge.dependency_strength,
+                    weight=min(
+                        1.0,
+                        edge.dependency_strength
+                        * edge.freshness
+                        * (
+                            1.0
+                            + 0.5 * edge.capacity_stress
+                            + 0.5 * edge.geographic_regulatory_stress
+                        ),
+                    ),
                     substitutability=edge.substitutability,
                     confidence=edge.confidence,
                     effective_from=edge.effective_from,

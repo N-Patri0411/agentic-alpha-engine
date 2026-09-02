@@ -9,6 +9,7 @@ from pydantic import BaseModel, Field
 
 from ..adapters import SecFilingAdapter
 from ..adapters.base import SourceSnapshot
+from ..evidence import EvidenceObservation, TextEvidence
 from ..extraction import (
     DocumentPassage,
     EdgeProposal,
@@ -33,6 +34,17 @@ class FilingExtractionReport(BaseModel):
     filings: list[dict[str, object]]
     snapshot: SourceSnapshot
     passages: list[DocumentPassage]
+    outcomes: list[EdgeProposal | NoEdgeProposal]
+    validations: list[EvidenceValidationReport]
+
+
+class ObservationExtractionRequest(BaseModel):
+    observations: list[EvidenceObservation] = Field(min_length=1)
+    known_entities: set[str] = Field(min_length=2)
+
+
+class ObservationExtractionReport(BaseModel):
+    observations: list[EvidenceObservation]
     outcomes: list[EdgeProposal | NoEdgeProposal]
     validations: list[EvidenceValidationReport]
 
@@ -84,6 +96,37 @@ class ExtractionAgent:
             filings=filings,
             snapshot=snapshot,
             passages=passages,
+            outcomes=outcomes,
+            validations=validations,
+        )
+
+    def run_observations(
+        self, request: ObservationExtractionRequest
+    ) -> ObservationExtractionReport:
+        """Interpret any text observation; source adapters remain responsible for collection."""
+
+        outcomes: list[EdgeProposal | NoEdgeProposal] = []
+        validations: list[EvidenceValidationReport] = []
+        for observation in request.observations:
+            if not isinstance(observation.payload, TextEvidence):
+                continue
+            payload = observation.payload
+            passage = DocumentPassage(
+                snapshot_sha256=observation.document.content_sha256,
+                source_url=observation.document.source_url,
+                start_offset=payload.character_start,
+                end_offset=payload.character_start + len(payload.text),
+                text=payload.text,
+                matching_keywords=[observation.document.source_kind],
+            )
+            outcome = self._extractor.extract(
+                passage, issuer_entity_id=observation.document.issuer_entity_id
+            )
+            outcomes.append(outcome)
+            if isinstance(outcome, EdgeProposal):
+                validations.append(self._validator.validate(outcome))
+        return ObservationExtractionReport(
+            observations=request.observations,
             outcomes=outcomes,
             validations=validations,
         )

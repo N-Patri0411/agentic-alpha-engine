@@ -2,8 +2,14 @@
 
 from .alpha_generator import AlphaGeneratorAgent
 from .backtester_agent import BacktesterAgent
-from .extraction import ExtractionAgent, FilingExtractionRequest, build_extraction_agent
+from .extraction import (
+    ExtractionAgent,
+    FilingExtractionRequest,
+    ObservationExtractionRequest,
+    build_extraction_agent,
+)
 from .gatekeeper import GatekeeperAgent
+from .graph_adjudicator import GraphAdjudicatorAgent
 from .monitor import MonitorAgent
 from .orchestrator import OrchestratorAgent
 from .portfolio import PortfolioOptimiserAgent
@@ -14,9 +20,11 @@ __all__ = [
     "BacktesterAgent",
     "ExtractionAgent",
     "FilingExtractionRequest",
+    "GraphAdjudicatorAgent",
     "GatekeeperAgent",
     "MonitorAgent",
     "OrchestratorAgent",
+    "ObservationExtractionRequest",
     "PortfolioOptimiserAgent",
     "ResearchAgent",
     "build_extraction_agent",

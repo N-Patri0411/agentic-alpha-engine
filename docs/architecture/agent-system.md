@@ -21,8 +21,11 @@ workflow; the optional Research Agent is built last.
 
 The semiconductor graph and eventual GNN are Extraction Agent tools, not extra
 agents. Evidence collection and evidence validation are internal Extraction
-workers. The Gatekeeper decides research quality; it does not validate a filing
-quote.
+workers. The bounded Graph Adjudicator is a graph-maintenance agent: it receives
+only immutable evidence observations and may publish a reviewed snapshot through
+the deterministic publisher. It is not part of the seven-agent alpha pipeline
+and cannot trade, discover arbitrary tools, or bypass evidence rules. The
+Gatekeeper decides research quality; it does not validate a filing quote.
 
 ## Orchestrator controls
 

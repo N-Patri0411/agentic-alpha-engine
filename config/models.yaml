@@ -9,6 +9,10 @@ roles:
     provider: openai
     model: gpt-5.6-luna
     api_key_env: OPENAI_API_KEY
+  graph_adjudicator:
+    provider: openai
+    model: gpt-5.6-luna
+    api_key_env: OPENAI_API_KEY
   alpha_generator:
     provider: fake
     model: deterministic-generator

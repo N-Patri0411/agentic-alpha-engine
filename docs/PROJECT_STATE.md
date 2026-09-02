@@ -2,7 +2,7 @@
 
 ## Current milestone
 
-Evidence-platform foundation: common immutable evidence records and local ledger.
+Evidence-first source layer and bounded living-graph foundation.
 
 ## Verified capabilities
 
@@ -19,19 +19,33 @@ Evidence-platform foundation: common immutable evidence records and local ledger
   with typed text, filing-fact, market-bar, or event-signal payloads. A local
   DuckDB ledger records observations, source-catalog entries, and run receipts
   append-only with idempotency protection.
+- SEC multi-form, official investor-relations, official earnings, discovery, and
+  Alpha Vantage daily-OHLCV adapters all emit that same observation envelope.
+  Their normal test runs use frozen fixtures and need neither network nor keys.
+- The Extraction Agent now accepts common text observations, rather than only
+  SEC-specific requests. It produces the same constrained relationship drafts
+  after source collection has preserved the original evidence.
+- The Graph Adjudicator resolves registered aliases, clusters source evidence,
+  validates model output, and applies bounded reliability/freshness-weighted
+  changes before the write-once publisher creates a new graph snapshot. One weak
+  discovery source cannot add a graph edge.
 - Beginner-friendly explanations are tracked under `docs/reference/` for both laptops.
 
 ## Next slices
 
-1. Implement SEC multi-form and official investor-relations adapters against the common evidence contract.
-2. Implement official earnings evidence, web discovery/corroboration, and market-data adapters.
-3. Refactor the Extraction Agent to collect common observations before proposing graph evidence.
-4. Build Graph Adjudicator policy and temporal state after source coverage is proven.
+1. Add a bounded runtime command that collects eligible observations, records a
+   receipt, and consolidates them into a nightly graph snapshot.
+2. Run and document small real-source smoke collections for each adapter in the
+   semiconductor registry; do not use free market data for historical alpha claims.
+3. Extend evidence conflict/outlier clustering, then replay static and evolving
+   snapshots across documented semiconductor events without future leakage.
+4. Only after those baselines exist, resume feature/alpha-generation work.
 
 ## Known risks
 
 - No production market-data provider is configured; demo CSVs are strictly illustrative.
-- The scenario graph is deterministic and hand-curated. It is not a trained predictive model.
+- The scenario graph is deterministic at scoring time. Its graph-maintenance
+  policy is new and has not yet been evaluated over a historical event replay.
 - Backtest statistics are minimal initial diagnostics and do not establish investability.
 - Local Codex plugin configuration does not synchronize; install it on both laptops. The tracked `AGENTS.md` carries the repository rules.
 - React dependencies cannot be verified on this laptop until Node.js LTS is installed.
@@ -54,12 +68,12 @@ scripts\setup.ps1
 scripts\run-demos.ps1
 ```
 
-The test suite currently contains nine passing tests. Replayable synthetic demo
-output is recorded in `docs/reference/demo-results.md`.
-
-The evidence-platform and SEC extraction slices have 39 passing tests with the command above. A live
+The current suite has 64 passing tests with the command above. Replayable
+synthetic demo output is recorded in `docs/reference/demo-results.md`. A live
 NVIDIA 10-K and AMD 10-K produced draft, provenance-validated manufacturing
 dependencies on TSM; a TSMC 20-F correctly produced no proposal when no
-approved counterparty was named. The two approved dependencies are now in
-`data/graph_snapshots/semiconductor-sec-reviewed-v1.json`. See
-`docs/research/2026-09-01-live-sec-extraction-trial.md`.
+approved counterparty was named. The original two dependencies are in
+`data/graph_snapshots/semiconductor-sec-reviewed-v1.json`; new snapshots are
+write-once and use the bounded Graph Adjudicator policy. See
+`docs/research/2026-09-01-live-sec-extraction-trial.md` and
+`docs/decisions/0003-agent-managed-living-graph.md`.
