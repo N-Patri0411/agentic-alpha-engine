@@ -54,26 +54,34 @@ Evidence-first source layer and bounded living-graph foundation.
 - A bounded live A2A trial successfully ran Luna for both Extraction and Graph
   Adjudication on current public NVIDIA and AMD 10-K passages. Its scratch
   snapshots are ignored local artifacts; no unreviewed output was promoted.
+- Controlled post-discovery page retrieval now fetches actual readable content
+  from reviewed official hosts, retains exact relationship-ranked passages, and
+  passes them to Luna rather than treating titles and URLs as evidence. A live
+  NVIDIA Newsroom trial produced an ignored `Hynix -> NVDA` graph-edge proposal
+  through Extraction and Graph Adjudication; it was not promoted to the tracked
+  reviewed graph.
 - Beginner-friendly explanations are tracked under `docs/reference/` for both laptops.
 
 ## Next slices
 
 1. Add an incremental evidence watermark so graph workflows process only new or
    changed observations, while keeping a full replay option for research.
-2. Add snapshot-diff and event-timeline endpoints, then implement the first
+2. Package the bounded extraction-to-adjudication path as a manual CLI, then
+   add source-tier promotion and a review screen before scheduled publication.
+3. Add snapshot-diff and event-timeline endpoints, then implement the first
    React/Cytoscape scenario explorer.
-3. Build the ripple-to-factor bridge and use historical scenario-run receipts
+4. Build the ripple-to-factor bridge and use historical scenario-run receipts
    as versioned inputs to an honest backtest.
-4. Add a small scheduler/CLI wrapper around the bounded intake and nightly
+5. Add a small scheduler/CLI wrapper around the bounded intake and nightly
    consolidation services; it must remain manual-started in development.
-5. Add reviewed official RSS/feed or documented-download fallbacks for the
+6. Add reviewed official RSS/feed or documented-download fallbacks for the
    remaining Micron, GlobalFoundries, and UMC newsroom access failures; do not
    evade site access controls.
-6. Add persistent source watermarks so repeated collection selects only new
+7. Add persistent source watermarks so repeated collection selects only new
    filings, releases, and bars rather than relying solely on ledger idempotency.
-7. Extend evidence conflict/outlier clustering, then replay static and evolving
+8. Extend evidence conflict/outlier clustering, then replay static and evolving
    snapshots across documented semiconductor events without future leakage.
-8. Only after those baselines exist, resume feature/alpha-generation work.
+9. Only after those baselines exist, resume feature/alpha-generation work.
 
 ## Known risks
 
@@ -105,7 +113,7 @@ scripts\setup.ps1
 scripts\run-demos.ps1
 ```
 
-The current suite has 76 passing tests with the command above. Replayable
+The current suite has 79 passing tests with the command above. Replayable
 synthetic demo output is recorded in `docs/reference/demo-results.md`. A live
 NVIDIA 10-K and AMD 10-K produced draft, provenance-validated manufacturing
 dependencies on TSM; a TSMC 20-F correctly produced no proposal when no
@@ -113,4 +121,6 @@ approved counterparty was named. The original two dependencies are in
 `data/graph_snapshots/semiconductor-sec-reviewed-v1.json`; new snapshots are
 write-once and use the bounded Graph Adjudicator policy. See
 `docs/research/2026-09-01-live-sec-extraction-trial.md` and
-`docs/decisions/0003-agent-managed-living-graph.md`.
+`docs/decisions/0003-agent-managed-living-graph.md`. The full-page evidence and
+Luna graph trial is recorded in
+`docs/research/2026-09-02-web-content-and-luna-graph-trial.md`.

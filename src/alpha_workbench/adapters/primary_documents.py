@@ -6,6 +6,11 @@ import re
 from html.parser import HTMLParser
 
 _NON_NARRATIVE_TAGS = {
+    "aside",
+    "footer",
+    "form",
+    "header",
+    "nav",
     "script",
     "style",
     "ix:header",

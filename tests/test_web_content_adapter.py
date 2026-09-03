@@ -57,7 +57,8 @@ def _adapter(tmp_path: Path, handler: httpx.MockTransport) -> WebPageContentAdap
 
 def test_web_content_adapter_fetches_full_page_and_ranks_exact_passages(tmp_path: Path) -> None:
     content = b"""
-    <html><body><p>Introductory text.</p>
+    <html><header>NVIDIA Newsroom Navigation NVIDIA TSMC Partnership</header>
+    <body><p>Introductory text.</p>
     <p>NVIDIA relies on TSMC manufacturing capacity for advanced GPU supply.
     The supply agreement covers leading products.</p></body></html>
     """
@@ -77,7 +78,9 @@ def test_web_content_adapter_fetches_full_page_and_ranks_exact_passages(tmp_path
     assert observation.mentioned_entity_ids == ("NVDA", "TSM")
     assert observation.payload.section == "fetched_discovery_passage"
     assert "NVIDIA relies on TSMC" in observation.payload.text
+    assert "Newsroom Navigation" not in observation.payload.text
     assert observation.payload.exact_quote in observation.payload.text
+    assert observation.extraction.extractor_version == "2"
     assert (tmp_path / "web" / f"{observation.document.content_sha256}.html").exists()
 
 

@@ -141,7 +141,7 @@ class WebPageContentAdapter:
             observations.append(
                 EvidenceObservation(
                     idempotency_key=(
-                        f"{self.name}:{content_hash}:{candidate.observation_id}:{index}"
+                        f"{self.name}:v2:{content_hash}:{candidate.observation_id}:{index}"
                     ),
                     document=document,
                     mentioned_entity_ids=(
@@ -160,7 +160,7 @@ class WebPageContentAdapter:
                         section="fetched_discovery_passage",
                     ),
                     extraction=ExtractionProvenance(
-                        extractor_name=self.name, extractor_version="1", run_id=run_id
+                        extractor_name=self.name, extractor_version="2", run_id=run_id
                     ),
                 )
             )

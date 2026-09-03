@@ -48,6 +48,26 @@ most five results per query, and labels every result `discovery`. Discovery can
 surface candidates and contradictions but can never publish a graph edge on its
 own.
 
+### From discovery result to page content
+
+Discovery results are not treated as enough evidence. The separate content
+adapter can fetch the readable public page *after* discovery, subject to the
+tracked HTTPS domain allow-list, redirect and one-megabyte response limits. It
+stores the raw response only in ignored local cache and writes relationship-
+ranked, exact text passages into the evidence ledger. Luna receives those
+passages later; it does not browse URLs.
+
+For a focused manual trial:
+
+```powershell
+.venv\Scripts\python.exe -m alpha_workbench discover-web --issuer NVDA --query "site:nvidianews.nvidia.com NVIDIA SK hynix technology partnership HBM" --run-id targeted-web --max-results 5
+.venv\Scripts\python.exe -m alpha_workbench enrich-web-discovery --discovery-run targeted-web --run-id targeted-web-content --limit 5
+```
+
+The current allow-list is deliberately small and tracked in
+`data/source_catalog/web_fetch_allowlist_v1.json`. Add a host only after a
+policy review; the adapter is not a general-purpose scraper.
+
 ## What the command collects
 
 After adding both keys, run this from the repository root:
