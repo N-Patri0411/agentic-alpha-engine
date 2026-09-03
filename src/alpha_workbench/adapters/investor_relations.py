@@ -57,7 +57,14 @@ class OfficialInvestorRelationsAdapter:
         min_interval_seconds: float = 0.2,
     ) -> None:
         self._cache_dir = cache_dir
-        self._client = client or httpx.Client(timeout=20.0)
+        self._client = client or httpx.Client(
+            timeout=20.0,
+            follow_redirects=True,
+            headers={
+                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+                "User-Agent": "AgenticAlphaWorkbench/0.1 (public research collection)",
+            },
+        )
         self._min_interval_seconds = min_interval_seconds
         self._last_request_at = 0.0
 

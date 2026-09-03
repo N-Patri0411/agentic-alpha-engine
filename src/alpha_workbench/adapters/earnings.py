@@ -58,12 +58,24 @@ class SecEarningsDocumentDiscoverer:
         self._sec_filings = sec_filings
 
     def discover(
-        self, *, cik: str, issuer_entity_id: str, max_documents: int = 2
+        self,
+        *,
+        cik: str,
+        issuer_entity_id: str,
+        max_documents: int = 2,
+        max_filings_to_inspect: int = 4,
     ) -> list[EarningsDocumentRequest]:
         if max_documents < 1:
             raise ValueError("max_documents must be at least 1")
+        if max_filings_to_inspect < 1:
+            raise ValueError("max_filings_to_inspect must be at least 1")
         filings = self._sec_filings.discover(
-            {"cik": cik, "forms": ["8-K", "6-K"], "include_exhibits": True}
+            {
+                "cik": cik,
+                "forms": ["8-K", "6-K"],
+                "include_exhibits": True,
+                "max_filings": max_filings_to_inspect,
+            }
         )
         results: list[EarningsDocumentRequest] = []
         for filing in filings:

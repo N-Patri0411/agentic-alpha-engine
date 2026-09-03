@@ -97,7 +97,10 @@ class InitialSemiconductorSourceRun:
                 )
                 try:
                     earnings_documents = self._earnings_discoverer.discover(
-                        cik=cik, issuer_entity_id=entity.entity_id, max_documents=1
+                        cik=cik,
+                        issuer_entity_id=entity.entity_id,
+                        max_documents=1,
+                        max_filings_to_inspect=4,
                     )
                 except Exception as error:
                     receipts.append(
@@ -142,14 +145,14 @@ class InitialSemiconductorSourceRun:
                     },
                 )
             )
-        ir_sources = list(self._catalog.for_adapter("investor_relations"))
-        receipts.append(
-            self._intake.collect(
-                adapter_name="official_investor_relations",
-                run_id=run_id,
-                query={"sources": ir_sources, "max_linked_pages": 2},
+        for source in self._catalog.for_adapter("investor_relations"):
+            receipts.append(
+                self._intake.collect(
+                    adapter_name="official_investor_relations",
+                    run_id=run_id,
+                    query={"sources": [source], "max_linked_pages": 2},
+                )
             )
-        )
         observations_by_key = {
             observation.idempotency_key: observation
             for observation in self._ledger.observations_as_of(datetime.now(UTC))

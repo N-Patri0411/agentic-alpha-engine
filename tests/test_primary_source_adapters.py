@@ -137,6 +137,40 @@ def test_sec_adapter_rejects_forms_outside_the_reviewed_contract(tmp_path: Path)
         adapter.discover({"cik": "1045810", "forms": ["S-1"]})
 
 
+def test_sec_discovery_limits_primary_filings_before_expanding_exhibits(tmp_path: Path) -> None:
+    metadata = {
+        "filings": {
+            "recent": {
+                "form": ["8-K", "8-K"],
+                "accessionNumber": ["0001-26-000001", "0001-26-000002"],
+                "primaryDocument": ["first.htm", "second.htm"],
+                "filingDate": ["2026-02-01", "2026-01-01"],
+            }
+        }
+    }
+    requested_indexes: list[str] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.host == "data.sec.gov":
+            return httpx.Response(200, json=metadata)
+        if request.url.path.endswith("index.json"):
+            requested_indexes.append(str(request.url))
+            return httpx.Response(200, json={"directory": {"item": []}})
+        return httpx.Response(404)
+
+    adapter = SecFilingAdapter(
+        tmp_path / "sec",
+        user_agent="Test test@example.com",
+        client=httpx.Client(transport=httpx.MockTransport(handler)),
+    )
+    discovered = adapter.discover(
+        {"cik": "1045810", "forms": ["8-K"], "include_exhibits": True, "max_filings": 1}
+    )
+
+    assert len(discovered) == 1
+    assert len(requested_indexes) == 1
+
+
 def test_official_ir_adapter_handles_rss_and_page_without_network(tmp_path: Path) -> None:
     rss = b"""<?xml version=\"1.0\"?>
     <rss><channel><item><title>Capacity update</title>
@@ -285,7 +319,7 @@ def test_sec_earnings_discoverer_finds_bounded_8k_and_6k_exhibits(tmp_path: Path
         )
     )
     documents = SecEarningsDocumentDiscoverer(sec).discover(
-        cik="1045810", issuer_entity_id="NVDA", max_documents=2
+        cik="1045810", issuer_entity_id="NVDA", max_documents=2, max_filings_to_inspect=2
     )
 
     assert [document.kind for document in documents] == ["sec_8k_exhibit", "sec_6k_exhibit"]

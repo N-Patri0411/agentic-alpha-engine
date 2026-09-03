@@ -66,6 +66,12 @@ class SecFilingAdapter:
         unsupported = forms - _SUPPORTED_FORMS
         if unsupported:
             raise ValueError(f"unsupported SEC forms: {sorted(unsupported)}")
+        max_filings_value = query.get("max_filings")
+        max_filings: int | None = None
+        if max_filings_value is not None:
+            max_filings = int(str(max_filings_value))
+            if max_filings < 1:
+                raise ValueError("max_filings must be at least 1")
         payload: dict[str, Any] = self._get(f"https://data.sec.gov/submissions/CIK{cik}.json").json()
         recent = payload.get("filings", {}).get("recent", {})
         filings: list[dict[str, object]] = []
@@ -85,8 +91,14 @@ class SecFilingAdapter:
                 "document_kind": "primary_filing",
             }
             filings.append(filing)
-            if bool(query.get("include_exhibits", False)):
-                filings.extend(self._discover_relevant_exhibits(filing))
+            if max_filings is not None and len(filings) >= max_filings:
+                break
+        if bool(query.get("include_exhibits", False)):
+            expanded: list[dict[str, object]] = []
+            for filing in filings:
+                expanded.append(filing)
+                expanded.extend(self._discover_relevant_exhibits(filing))
+            return expanded
         return filings
 
     def fetch(
@@ -126,7 +138,7 @@ class SecFilingAdapter:
         run_id = str(query.get("run_id", "sec-collection"))
         # Discover only primary documents first, then inspect exhibits for the
         # bounded selection. This avoids index requests for every historical filing.
-        discovery_query = {**query, "include_exhibits": False}
+        discovery_query = {**query, "include_exhibits": False, "max_filings": max_filings}
         filings = self.discover(discovery_query)[:max_filings]
         if bool(query.get("include_exhibits", False)):
             expanded: list[dict[str, object]] = []
