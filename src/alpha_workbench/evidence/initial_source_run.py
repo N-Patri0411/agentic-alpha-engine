@@ -92,6 +92,7 @@ class InitialSemiconductorSourceRun:
                             "max_filings": 1,
                             "max_passages": 1,
                             "include_exhibits": False,
+                            "run_id": run_id,
                         },
                     )
                 )
@@ -132,6 +133,7 @@ class InitialSemiconductorSourceRun:
                             "issuer_entity_id": entity.entity_id,
                             "symbol": entity.ticker,
                             "outputsize": "compact",
+                            "run_id": run_id,
                         },
                     )
                 )
@@ -142,6 +144,7 @@ class InitialSemiconductorSourceRun:
                     query={
                         "issuer_entity_id": entity.entity_id,
                         "query": f"{entity.legal_name} semiconductor supply chain dependency",
+                        "run_id": run_id,
                     },
                 )
             )
@@ -150,7 +153,7 @@ class InitialSemiconductorSourceRun:
                 self._intake.collect(
                     adapter_name="official_investor_relations",
                     run_id=run_id,
-                    query={"sources": [source], "max_linked_pages": 2},
+                    query={"sources": [source], "max_linked_pages": 2, "run_id": run_id},
                 )
             )
         observations_by_key = {
