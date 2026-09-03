@@ -9,6 +9,7 @@ This folder is the beginner-friendly, Git-tracked learning companion for the pro
 3. [Verified demo results](demo-results.md) shows how to replay and interpret the current demos.
 4. [Semiconductor domain mapping plan](../research/semiconductor-domain-mapping-plan.md) explains the next research milestone.
 5. [Source setup and first live evidence run](source-setup-and-live-run.md) explains the live source adapters and their output.
+6. [Graph format and visualizer](graph-format-and-visualizer.md) explains the JSON graph and how to open its local HTML view.
 
 ## Ground rules
 

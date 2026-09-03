@@ -115,8 +115,8 @@ def test_initial_source_run_collects_every_configured_family(tmp_path: Path) -> 
     finally:
         ledger.close()
 
-    assert report.observation_count == 28
-    assert len(report.receipts) == 28
+    assert report.observation_count == 38
+    assert len(report.receipts) == 38
     assert {receipt.adapter_name for receipt in report.receipts} == {
         "sec_filings",
         "official_earnings_evidence",

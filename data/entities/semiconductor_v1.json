@@ -10,6 +10,8 @@
     {"entity_id": "Hynix", "legal_name": "SK hynix Inc.", "aliases": ["SK Hynix", "SK hynix"], "tradeable": false},
     {"entity_id": "MU", "legal_name": "Micron Technology, Inc.", "aliases": ["Micron", "Micron Technology"], "ticker": "MU", "tradeable": true},
     {"entity_id": "GFS", "legal_name": "GlobalFoundries Inc.", "aliases": ["GLOBALFOUNDRIES", "GF", "GlobalFoundries"], "ticker": "GFS", "tradeable": true},
-    {"entity_id": "UMC", "legal_name": "United Microelectronics Corporation", "aliases": ["UMC", "United Microelectronics"], "ticker": "UMC", "tradeable": true}
+    {"entity_id": "UMC", "legal_name": "United Microelectronics Corporation", "aliases": ["UMC", "United Microelectronics"], "ticker": "UMC", "tradeable": true},
+    {"entity_id": "ASML", "legal_name": "ASML Holding N.V.", "aliases": ["ASML", "ASML Holding"], "cik": "0000937966", "ticker": "ASML", "tradeable": true},
+    {"entity_id": "AMAT", "legal_name": "Applied Materials, Inc.", "aliases": ["Applied Materials", "Applied Materials, Inc."], "cik": "0000006951", "ticker": "AMAT", "tradeable": true}
   ]
 }

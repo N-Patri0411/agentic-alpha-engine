@@ -27,7 +27,8 @@ from .evidence.initial_source_run import InitialSemiconductorSourceRun
 from .evidence.ledger import DuckDBEvidenceLedger
 from .evidence.runtime import EvidenceIntakeService
 from .graph import SupplyChainGraph
-from .graph_registry import EntityRegistry, RippleRiskScorer
+from .graph_registry import EntityRegistry, GraphSnapshot, RippleRiskScorer
+from .graph_visualizer import render_graph_html
 from .llm.models import create_llm, load_model_config
 
 
@@ -103,6 +104,16 @@ def _parser() -> argparse.ArgumentParser:
     discover.add_argument(
         "--ledger", type=Path, default=Path("data/private/evidence.duckdb")
     )
+    visualize = commands.add_parser(
+        "visualize-graph", help="render a reviewed snapshot into a local HTML graph"
+    )
+    visualize.add_argument("--snapshot", type=Path, required=True)
+    visualize.add_argument(
+        "--registry", type=Path, default=Path("data/entities/semiconductor_v1.json")
+    )
+    visualize.add_argument(
+        "--output", type=Path, default=Path("reports/semiconductor-graph.html")
+    )
     return parser
 
 
@@ -137,6 +148,17 @@ def main(argv: Sequence[str] | None = None) -> int:
         print(json.dumps(result.model_dump(mode="json"), indent=2, sort_keys=True))
         return 0
     root = Path.cwd()
+    if args.command == "visualize-graph":
+        snapshot_path = args.snapshot if args.snapshot.is_absolute() else root / args.snapshot
+        registry_path = args.registry if args.registry.is_absolute() else root / args.registry
+        output_path = args.output if args.output.is_absolute() else root / args.output
+        visualization_receipt = render_graph_html(
+            registry=EntityRegistry.from_json(registry_path),
+            snapshot=GraphSnapshot.from_json(snapshot_path),
+            output_path=output_path,
+        )
+        print(json.dumps(visualization_receipt.model_dump(mode="json"), indent=2, sort_keys=True))
+        return 0
     if args.command == "discover-web":
         if args.max_results < 1 or args.max_results > 10:
             raise ValueError("max-results must be between 1 and 10")

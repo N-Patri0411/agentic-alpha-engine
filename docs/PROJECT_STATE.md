@@ -11,7 +11,8 @@ Evidence-first source layer and bounded living-graph foundation.
 - The initial backtest creates equal-weight long/short paper positions, accounts for turnover costs, and reports rank IC, net returns, drawdown, and turnover.
 - The scenario engine propagates a severity shock over effective-dated supply-chain edges and returns source-backed explanation paths.
 - A reviewed semiconductor entity registry resolves CIKs, aliases, and whether
-  an entity is tradeable.
+  an entity is tradeable. It now contains a 10-company core, including ASML and
+  Applied Materials with configured SEC and official-IR source entries.
 - The first immutable SEC-backed graph snapshot contains reviewed TSM-to-NVIDIA
   and TSM-to-AMD manufacturing dependencies. `RippleRiskScorer` replays it
   with evidence paths and rejects a tampered snapshot.
@@ -24,9 +25,9 @@ Evidence-first source layer and bounded living-graph foundation.
   Their normal test runs use frozen fixtures and need neither network nor keys.
 - The bounded `collect-initial-sources` command now runs the initial
   semiconductor source matrix end-to-end into the ignored local DuckDB ledger:
-  SEC filings and 8-K/6-K earnings exhibits for US/SEC filers, eight official
+  SEC filings and 8-K/6-K earnings exhibits for US/SEC filers, ten official
   investor-relations/newsroom entries plus bounded same-site release links,
-  Tavily discovery results, and Alpha Vantage daily bars for six tradeable
+  Tavily discovery results, and Alpha Vantage daily bars for eight tradeable
   entities. It records a receipt for every attempted adapter call rather than
   hiding failures.
 - A real source smoke run confirmed live SEC, Tavily, and Alpha Vantage paths;
@@ -61,6 +62,9 @@ Evidence-first source layer and bounded living-graph foundation.
   through Extraction and Graph Adjudication; it was not promoted to the tracked
   reviewed graph.
 - Beginner-friendly explanations are tracked under `docs/reference/` for both laptops.
+- A local NetworkX-based HTML visualizer renders every registry entity, approved
+  directed edge, relationship type, strength, confidence, and evidence link.
+  It can render either a tracked reviewed snapshot or an ignored local trial.
 
 ## Next slices
 
@@ -107,13 +111,14 @@ Evidence-first source layer and bounded living-graph foundation.
 .venv\Scripts\mypy.exe src
 .venv\Scripts\python.exe -m alpha_workbench ripple-score --snapshot data/graph_snapshots/semiconductor-sec-reviewed-v1.json --shock TSM --severity 0.9 --as-of 2026-05-01T00:00:00+00:00
 .venv\Scripts\python.exe -m alpha_workbench collect-initial-sources --preview-limit 32
+.venv\Scripts\python.exe -m alpha_workbench visualize-graph --snapshot data/graph_snapshots/semiconductor-sec-reviewed-v1.json --output reports/semiconductor-graph.html
 python -m alpha_workbench backtest --prices data/demo_prices.csv --factors data/demo_factors.csv --as-of 2024-01-05T21:00:00+00:00
 python -m alpha_workbench scenario --edges data/semiconductor_edges.json --shock TSM --severity 0.9 --as-of 2024-01-15T00:00:00+00:00
 scripts\setup.ps1
 scripts\run-demos.ps1
 ```
 
-The current suite has 79 passing tests with the command above. Replayable
+The current suite has 80 passing tests with the command above. Replayable
 synthetic demo output is recorded in `docs/reference/demo-results.md`. A live
 NVIDIA 10-K and AMD 10-K produced draft, provenance-validated manufacturing
 dependencies on TSM; a TSMC 20-F correctly produced no proposal when no

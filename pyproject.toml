@@ -25,6 +25,9 @@ agents = [
   "langgraph>=0.2,<1",
   "litellm>=1.60,<2",
 ]
+visualization = [
+  "networkx>=3.4,<4",
+]
 dev = [
   "pytest>=8.3,<9",
   "ruff>=0.8,<1",

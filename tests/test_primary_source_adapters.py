@@ -390,7 +390,16 @@ def test_official_ir_receipt_is_idempotent_and_catalog_is_official_allow_list(
     catalog_path = root / "data/source_catalog/semiconductor_primary_sources_v1.json"
     catalog = load_source_catalog(catalog_path)
     assert {source.issuer_entity_id for source in catalog.sources} == {
-        "NVDA", "AMD", "TSM", "Samsung", "Hynix", "MU", "GFS", "UMC"
+        "NVDA",
+        "AMD",
+        "TSM",
+        "Samsung",
+        "Hynix",
+        "MU",
+        "GFS",
+        "UMC",
+        "ASML",
+        "AMAT",
     }
     assert all(source.url.startswith("https://") for source in catalog.sources)
     assert {source.source_kind for source in catalog.sources} == {

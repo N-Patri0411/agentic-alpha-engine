@@ -89,6 +89,38 @@
       "format": "html_page",
       "polling_hint": "nightly",
       "usage_note": "UMC official investor press-release page"
+    },
+    {
+      "issuer_entity_id": "ASML",
+      "source_kind": "sec_filings",
+      "url": "https://www.sec.gov/edgar/browse/?CIK=0000937966",
+      "cik": "0000937966",
+      "polling_hint": "event_driven",
+      "usage_note": "ASML SEC EDGAR issuer filing index"
+    },
+    {
+      "issuer_entity_id": "ASML",
+      "source_kind": "investor_relations",
+      "url": "https://www.asml.com/en/investors",
+      "format": "html_page",
+      "polling_hint": "nightly",
+      "usage_note": "ASML official investor-relations landing page"
+    },
+    {
+      "issuer_entity_id": "AMAT",
+      "source_kind": "sec_filings",
+      "url": "https://www.sec.gov/edgar/browse/?CIK=0000006951",
+      "cik": "0000006951",
+      "polling_hint": "event_driven",
+      "usage_note": "Applied Materials SEC EDGAR issuer filing index"
+    },
+    {
+      "issuer_entity_id": "AMAT",
+      "source_kind": "investor_relations",
+      "url": "https://ir.appliedmaterials.com/",
+      "format": "html_page",
+      "polling_hint": "nightly",
+      "usage_note": "Applied Materials official investor-relations landing page"
     }
   ]
 }
