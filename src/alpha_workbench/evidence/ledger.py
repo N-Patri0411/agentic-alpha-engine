@@ -142,6 +142,23 @@ class DuckDBEvidenceLedger:
         ).fetchall()
         return [EvidenceObservation.model_validate_json(record) for (record,) in rows]
 
+    def observations_for_run(
+        self, run_id: str, *, source_adapter: str | None = None
+    ) -> list[EvidenceObservation]:
+        """Return immutable observations emitted by one source-collection run."""
+
+        query = """
+            select record from evidence_observations
+            where json_extract_string(record, '$.extraction.run_id') = ?
+        """
+        parameters: list[object] = [run_id]
+        if source_adapter is not None:
+            query += " and json_extract_string(record, '$.document.source_adapter') = ?"
+            parameters.append(source_adapter)
+        query += " order by available_at, observation_id"
+        rows = self._connection.execute(query, parameters).fetchall()
+        return [EvidenceObservation.model_validate_json(record) for (record,) in rows]
+
     def count_observations(self) -> int:
         row = self._connection.execute("select count(*) from evidence_observations").fetchone()
         assert row is not None

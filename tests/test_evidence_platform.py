@@ -91,6 +91,24 @@ def test_evidence_ledger_is_append_only_idempotent_and_as_of_safe(tmp_path: Path
     ledger.close()
 
 
+def test_evidence_ledger_selects_observations_by_collection_run(tmp_path: Path) -> None:
+    first = _observation(key="first")
+    second = _observation(key="second").model_copy(
+        update={
+            "extraction": ExtractionProvenance(
+                extractor_name="web_discovery", extractor_version="1", run_id="run-2"
+            )
+        }
+    )
+    ledger = DuckDBEvidenceLedger(tmp_path / "evidence.duckdb")
+    ledger.append_many([first, second])
+
+    assert [item.idempotency_key for item in ledger.observations_for_run("run-1")] == ["first"]
+    assert ledger.observations_for_run("run-1", source_adapter="web_discovery") == []
+    assert [item.idempotency_key for item in ledger.observations_for_run("run-2")] == ["second"]
+    ledger.close()
+
+
 def test_catalog_and_run_receipts_are_written_once(tmp_path: Path) -> None:
     now = datetime(2026, 1, 5, tzinfo=UTC)
     ledger = DuckDBEvidenceLedger(tmp_path / "evidence.duckdb")

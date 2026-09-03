@@ -15,13 +15,17 @@ from .adapters import (
     SecFilingAdapter,
     TavilyDiscoverySearchBackend,
     WebDiscoveryAdapter,
+    WebFetchPolicy,
+    WebPageContentAdapter,
     load_source_catalog,
 )
 from .agents import FilingExtractionRequest, build_extraction_agent
 from .backtest import backtest_long_short
 from .data import FrozenCSVMarketDataProvider, load_factors, parse_as_of
+from .evidence.contracts import TextEvidence
 from .evidence.initial_source_run import InitialSemiconductorSourceRun
 from .evidence.ledger import DuckDBEvidenceLedger
+from .evidence.runtime import EvidenceIntakeService
 from .graph import SupplyChainGraph
 from .graph_registry import EntityRegistry, RippleRiskScorer
 from .llm.models import create_llm, load_model_config
@@ -77,6 +81,17 @@ def _parser() -> argparse.ArgumentParser:
         default=Path("data/private/evidence.duckdb"),
         help="ignored local DuckDB evidence-ledger path",
     )
+    enrich = commands.add_parser(
+        "enrich-web-discovery",
+        help="fetch full text from allow-listed Tavily discovery results",
+    )
+    enrich.add_argument("--discovery-run", required=True)
+    enrich.add_argument("--run-id", default=None)
+    enrich.add_argument("--limit", type=int, default=8)
+    enrich.add_argument("--preview-limit", type=int, default=16)
+    enrich.add_argument(
+        "--ledger", type=Path, default=Path("data/private/evidence.duckdb")
+    )
     return parser
 
 
@@ -111,6 +126,64 @@ def main(argv: Sequence[str] | None = None) -> int:
         print(json.dumps(result.model_dump(mode="json"), indent=2, sort_keys=True))
         return 0
     root = Path.cwd()
+    if args.command == "enrich-web-discovery":
+        if args.limit < 1 or args.limit > 12:
+            raise ValueError("limit must be between 1 and 12")
+        run_id = args.run_id or f"web-content-{datetime.now(UTC):%Y%m%dT%H%M%SZ}"
+        ledger_path = args.ledger if args.ledger.is_absolute() else root / args.ledger
+        ledger = DuckDBEvidenceLedger(ledger_path)
+        try:
+            registry = EntityRegistry.from_json(
+                root / "data" / "entities" / "semiconductor_v1.json"
+            )
+            policy = WebFetchPolicy.from_json(
+                root / "data" / "source_catalog" / "web_fetch_allowlist_v1.json"
+            )
+            adapter = WebPageContentAdapter(root / "data" / "cache" / "web", policy)
+            intake = EvidenceIntakeService(ledger, {adapter.name: adapter})
+            aliases = {entity.entity_id: entity.aliases for entity in registry.entities}
+            candidates = ledger.observations_for_run(
+                args.discovery_run, source_adapter="web_discovery"
+            )
+            allowed = [
+                candidate
+                for candidate in candidates
+                if policy.allows(candidate.document.source_url)
+            ][: args.limit]
+            receipts = [
+                intake.collect(
+                    adapter_name=adapter.name,
+                    run_id=run_id,
+                    query={
+                        "candidate": candidate.model_dump(mode="json"),
+                        "entity_aliases": aliases,
+                        "max_passages": 2,
+                        "run_id": run_id,
+                    },
+                )
+                for candidate in allowed
+            ]
+            observations = ledger.observations_for_run(run_id, source_adapter=adapter.name)
+            web_report = {
+                "run_id": run_id,
+                "candidate_count": len(candidates),
+                "allow_list_eligible_count": len(allowed),
+                "receipts": [receipt.model_dump(mode="json") for receipt in receipts],
+                "previews": [
+                    {
+                        "issuer": observation.document.issuer_entity_id,
+                        "url": observation.document.source_url,
+                        "mentioned_entities": observation.mentioned_entity_ids,
+                        "text": observation.payload.text[:400],
+                    }
+                    for observation in observations[: args.preview_limit]
+                    if isinstance(observation.payload, TextEvidence)
+                ],
+            }
+        finally:
+            ledger.close()
+        print(json.dumps(web_report, indent=2, sort_keys=True, default=str))
+        return 0
     if args.command == "collect-initial-sources":
         run_id = args.run_id or f"initial-source-{datetime.now(UTC):%Y%m%dT%H%M%SZ}"
         ledger_path = args.ledger if args.ledger.is_absolute() else root / args.ledger

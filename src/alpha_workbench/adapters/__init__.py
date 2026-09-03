@@ -16,6 +16,7 @@ from .investor_relations import OfficialInvestorRelationsAdapter
 from .sec import SecFilingAdapter
 from .source_catalog import SourceCatalog, load_source_catalog
 from .tavily import TavilyDiscoverySearchBackend
+from .web_content import WebFetchPolicy, WebPageContentAdapter
 from .web_discovery import WebDiscoveryAdapter
 
 __all__ = [
@@ -35,5 +36,7 @@ __all__ = [
     "SourceCatalog",
     "TavilyDiscoverySearchBackend",
     "WebDiscoveryAdapter",
+    "WebFetchPolicy",
+    "WebPageContentAdapter",
     "load_source_catalog",
 ]

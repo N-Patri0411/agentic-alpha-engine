@@ -1,0 +1,16 @@
+{
+  "policy_id": "semiconductor-web-fetch-v1",
+  "schema_version": "1",
+  "allowed_hosts": [
+    "nvidianews.nvidia.com",
+    "ir.amd.com",
+    "investor.tsmc.com",
+    "news.skhynix.com",
+    "news.samsung.com",
+    "www.oecd.org",
+    "www.csis.org",
+    "www.congress.gov",
+    "cetas.turing.ac.uk",
+    "www.tandfonline.com"
+  ]
+}
