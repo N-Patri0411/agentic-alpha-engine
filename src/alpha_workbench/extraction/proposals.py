@@ -71,7 +71,12 @@ class EvidenceProposalExtractor:
                 "passage and suggested_confidence must be a number from 0 to 1. Do not nest "
                 "the response or omit any required key. Graph direction is always upstream "
                 "supplier/cause to downstream dependent: if NVIDIA says it relies on TSMC, "
-                "use source_entity_id TSM and target_entity_id NVDA."
+                "use source_entity_id TSM and target_entity_id NVDA. Use equipment_dependency "
+                "when an equipment maker supplies, develops, installs, or provides lithography "
+                "or fabrication capability for a manufacturer; ASML equipment used by TSMC is "
+                "ASML -> TSM. Do not treat a generic partnership, co-investment, or AI-factory "
+                "announcement as a dependency unless the passage also names what is supplied, "
+                "manufactured, or relied upon."
             ),
             user=(
                 f"Known entity IDs: {sorted(self._known_entities)}\n"

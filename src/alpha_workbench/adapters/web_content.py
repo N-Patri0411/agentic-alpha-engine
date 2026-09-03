@@ -30,6 +30,8 @@ _RELATIONSHIP_TERMS = (
     "customer",
     "contract",
     "dependency",
+    "designed for",
+    "production",
 )
 
 
@@ -41,6 +43,7 @@ class WebFetchPolicy(BaseModel):
     policy_id: str = Field(min_length=1)
     schema_version: str = "1"
     allowed_hosts: tuple[str, ...] = Field(min_length=1)
+    official_hosts: tuple[str, ...] = ()
 
     @classmethod
     def from_json(cls, path: Path) -> WebFetchPolicy:
@@ -49,6 +52,11 @@ class WebFetchPolicy(BaseModel):
     def allows(self, url: str) -> bool:
         parsed = urlparse(url)
         return parsed.scheme == "https" and parsed.hostname in set(self.allowed_hosts)
+
+    def source_tier(self, url: str) -> str:
+        """Return official only for hosts explicitly reviewed as company sources."""
+
+        return "official" if urlparse(url).hostname in set(self.official_hosts) else "discovery"
 
 
 class WebPageContentAdapter:
@@ -119,7 +127,7 @@ class WebPageContentAdapter:
         retrieved_at = self._now()
         document = SourceDocument(
             source_kind="web_discovery",
-            source_tier="discovery",
+            source_tier=self._policy.source_tier(resolved_url),  # type: ignore[arg-type]
             source_adapter=self.name,
             source_url=resolved_url,
             content_sha256=content_hash,
@@ -129,7 +137,7 @@ class WebPageContentAdapter:
             retrieved_at=retrieved_at,
             usage_note=(
                 "Full text retrieved from a reviewed discovery-result host; "
-                "discovery evidence cannot independently publish a graph edge"
+                "tier is determined by the tracked host policy"
             ),
             external_id=f"discovery:{candidate.observation_id}",
             title=candidate.document.title,
@@ -141,7 +149,7 @@ class WebPageContentAdapter:
             observations.append(
                 EvidenceObservation(
                     idempotency_key=(
-                        f"{self.name}:v2:{content_hash}:{candidate.observation_id}:{index}"
+                        f"{self.name}:v3:{content_hash}:{candidate.observation_id}:{index}"
                     ),
                     document=document,
                     mentioned_entity_ids=(
@@ -160,7 +168,7 @@ class WebPageContentAdapter:
                         section="fetched_discovery_passage",
                     ),
                     extraction=ExtractionProvenance(
-                        extractor_name=self.name, extractor_version="2", run_id=run_id
+                        extractor_name=self.name, extractor_version="3", run_id=run_id
                     ),
                 )
             )

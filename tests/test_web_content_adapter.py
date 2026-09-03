@@ -49,7 +49,11 @@ def _candidate(url: str = "https://research.example.test/article") -> EvidenceOb
 def _adapter(tmp_path: Path, handler: httpx.MockTransport) -> WebPageContentAdapter:
     return WebPageContentAdapter(
         tmp_path / "web",
-        WebFetchPolicy(policy_id="fixture", allowed_hosts=("research.example.test",)),
+        WebFetchPolicy(
+            policy_id="fixture",
+            allowed_hosts=("research.example.test",),
+            official_hosts=("research.example.test",),
+        ),
         client=httpx.Client(transport=handler),
         now=lambda: NOW,
     )
@@ -80,7 +84,8 @@ def test_web_content_adapter_fetches_full_page_and_ranks_exact_passages(tmp_path
     assert "NVIDIA relies on TSMC" in observation.payload.text
     assert "Newsroom Navigation" not in observation.payload.text
     assert observation.payload.exact_quote in observation.payload.text
-    assert observation.extraction.extractor_version == "2"
+    assert observation.extraction.extractor_version == "3"
+    assert observation.document.source_tier == "official"
     assert (tmp_path / "web" / f"{observation.document.content_sha256}.html").exists()
 
 

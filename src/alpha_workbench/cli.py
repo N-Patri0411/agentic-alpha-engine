@@ -8,6 +8,7 @@ from collections.abc import Sequence
 from datetime import UTC, datetime
 from pathlib import Path
 
+from .a2a import DuckDBMessageBus
 from .adapters import (
     AlphaVantageDailyAdapter,
     OfficialEarningsEvidenceAdapter,
@@ -20,6 +21,8 @@ from .adapters import (
     load_source_catalog,
 )
 from .agents import FilingExtractionRequest, build_extraction_agent
+from .agents.extraction_graph_workflow import ExtractionGraphWorkflow
+from .agents.graph_adjudicator import GraphAdjudicatorAgent
 from .backtest import backtest_long_short
 from .data import FrozenCSVMarketDataProvider, load_factors, parse_as_of
 from .evidence.contracts import TextEvidence
@@ -27,7 +30,8 @@ from .evidence.initial_source_run import InitialSemiconductorSourceRun
 from .evidence.ledger import DuckDBEvidenceLedger
 from .evidence.runtime import EvidenceIntakeService
 from .graph import SupplyChainGraph
-from .graph_registry import EntityRegistry, GraphSnapshot, RippleRiskScorer
+from .graph_build import current_utc, select_graph_build_observations
+from .graph_registry import EntityRegistry, GraphPublisher, GraphSnapshot, RippleRiskScorer
 from .graph_visualizer import render_graph_html
 from .llm.models import create_llm, load_model_config
 
@@ -114,6 +118,22 @@ def _parser() -> argparse.ArgumentParser:
     visualize.add_argument(
         "--output", type=Path, default=Path("reports/semiconductor-graph.html")
     )
+    graph_build = commands.add_parser(
+        "build-graph-from-evidence",
+        help="run bounded Extraction-to-Adjudication over official pair-specific evidence",
+    )
+    graph_build.add_argument("--evidence-run", required=True)
+    graph_build.add_argument("--current-snapshot", type=Path, required=True)
+    graph_build.add_argument("--snapshot-id", required=True)
+    graph_build.add_argument("--snapshot-output", type=Path, required=True)
+    graph_build.add_argument("--run-id", required=True)
+    graph_build.add_argument("--max-observations", type=int, default=5)
+    graph_build.add_argument(
+        "--ledger", type=Path, default=Path("data/private/evidence.duckdb")
+    )
+    graph_build.add_argument(
+        "--message-bus", type=Path, default=Path("data/private/graph_build_messages.duckdb")
+    )
     return parser
 
 
@@ -148,6 +168,82 @@ def main(argv: Sequence[str] | None = None) -> int:
         print(json.dumps(result.model_dump(mode="json"), indent=2, sort_keys=True))
         return 0
     root = Path.cwd()
+    if args.command == "build-graph-from-evidence":
+        ledger_path = args.ledger if args.ledger.is_absolute() else root / args.ledger
+        snapshot_path = (
+            args.current_snapshot
+            if args.current_snapshot.is_absolute()
+            else root / args.current_snapshot
+        )
+        output_path = args.snapshot_output
+        if not output_path.is_absolute():
+            output_path = root / output_path
+        bus_path = args.message_bus if args.message_bus.is_absolute() else root / args.message_bus
+        registry = EntityRegistry.from_json(root / "data" / "entities" / "semiconductor_v1.json")
+        snapshot = GraphSnapshot.from_json(snapshot_path)
+        ledger = DuckDBEvidenceLedger(ledger_path)
+        try:
+            observations = ledger.observations_for_run(args.evidence_run)
+            selected, selection = select_graph_build_observations(
+                observations=observations,
+                current_snapshot=snapshot,
+                maximum_observations=args.max_observations,
+            )
+        finally:
+            ledger.close()
+        extraction = build_extraction_agent(
+            cache_dir=root / "data" / "cache" / "sec",
+            llm=create_llm(load_model_config(root / "config" / "models.yaml", "extraction")),
+            known_entities=registry.entity_ids,
+        )
+        adjudicator = GraphAdjudicatorAgent(
+            create_llm(load_model_config(root / "config" / "models.yaml", "graph_adjudicator")),
+            registry,
+            GraphPublisher(registry),
+        )
+        workflow = ExtractionGraphWorkflow(DuckDBMessageBus(bus_path), extraction, adjudicator)
+        as_of_time = current_utc()
+        extraction_message = workflow.enqueue_extraction(
+            trace_id=f"graph-build:{args.run_id}",
+            run_id=args.run_id,
+            observations=selected,
+            known_entities=registry.entity_ids,
+            as_of_time=as_of_time,
+        )
+        graph_message = workflow.process_extraction(extraction_message)
+        if graph_message is None:
+            print(
+                json.dumps(
+                    {
+                        "run_id": args.run_id,
+                        "selection": selection.model_dump(mode="json"),
+                        "status": "no_validated_proposals",
+                    },
+                    indent=2,
+                    sort_keys=True,
+                )
+            )
+            return 0
+        report = workflow.process_graph(
+            graph_message,
+            current_snapshot=snapshot,
+            next_snapshot_id=args.snapshot_id,
+            snapshot_path=output_path,
+        )
+        print(
+            json.dumps(
+                {
+                    "run_id": args.run_id,
+                    "selection": selection.model_dump(mode="json"),
+                    "source_urls": [item.document.source_url for item in selected],
+                    "graph_adjudication": report.model_dump(mode="json"),
+                    "snapshot_output": str(output_path),
+                },
+                indent=2,
+                sort_keys=True,
+            )
+        )
+        return 0
     if args.command == "visualize-graph":
         snapshot_path = args.snapshot if args.snapshot.is_absolute() else root / args.snapshot
         registry_path = args.registry if args.registry.is_absolute() else root / args.registry
@@ -201,8 +297,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         print(json.dumps(discovery_report, indent=2, sort_keys=True, default=str))
         return 0
     if args.command == "enrich-web-discovery":
-        if args.limit < 1 or args.limit > 12:
-            raise ValueError("limit must be between 1 and 12")
+        if args.limit < 1 or args.limit > 32:
+            raise ValueError("limit must be between 1 and 32")
         run_id = args.run_id or f"web-content-{datetime.now(UTC):%Y%m%dT%H%M%SZ}"
         ledger_path = args.ledger if args.ledger.is_absolute() else root / args.ledger
         ledger = DuckDBEvidenceLedger(ledger_path)
@@ -219,11 +315,16 @@ def main(argv: Sequence[str] | None = None) -> int:
             candidates = ledger.observations_for_run(
                 args.discovery_run, source_adapter="web_discovery"
             )
-            allowed = [
-                candidate
-                for candidate in candidates
-                if policy.allows(candidate.document.source_url)
-            ][: args.limit]
+            allowed = []
+            seen_urls: set[str] = set()
+            for candidate in candidates:
+                url = candidate.document.source_url
+                if not policy.allows(url) or url in seen_urls:
+                    continue
+                seen_urls.add(url)
+                allowed.append(candidate)
+                if len(allowed) == args.limit:
+                    break
             receipts = [
                 intake.collect(
                     adapter_name=content_adapter.name,
@@ -290,7 +391,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         llm=create_llm(load_model_config(root / "config" / "models.yaml", "extraction")),
         known_entities=entities,
     )
-    report = agent.run_filing(
+    filing_report = agent.run_filing(
         FilingExtractionRequest(
             cik=args.cik,
             issuer_entity_id=args.issuer_entity,
@@ -298,7 +399,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             max_passages=args.max_passages,
         )
     )
-    print(json.dumps(report.model_dump(mode="json"), indent=2, sort_keys=True))
+    print(json.dumps(filing_report.model_dump(mode="json"), indent=2, sort_keys=True))
     return 0
 
 

@@ -65,6 +65,11 @@ Evidence-first source layer and bounded living-graph foundation.
 - A local NetworkX-based HTML visualizer renders every registry entity, approved
   directed edge, relationship type, strength, confidence, and evidence link.
   It can render either a tracked reviewed snapshot or an ignored local trial.
+- A bounded `build-graph-from-evidence` command now joins selected official
+  evidence to the real Luna Extraction and Graph Adjudication A2A workflow. The
+  first 10-company live build added GlobalFoundries-to-AMD and Micron-to-NVIDIA
+  dependencies while retaining unproven nodes as isolated; see the dated
+  research report for results and rejected candidates.
 
 ## Next slices
 
@@ -112,13 +117,14 @@ Evidence-first source layer and bounded living-graph foundation.
 .venv\Scripts\python.exe -m alpha_workbench ripple-score --snapshot data/graph_snapshots/semiconductor-sec-reviewed-v1.json --shock TSM --severity 0.9 --as-of 2026-05-01T00:00:00+00:00
 .venv\Scripts\python.exe -m alpha_workbench collect-initial-sources --preview-limit 32
 .venv\Scripts\python.exe -m alpha_workbench visualize-graph --snapshot data/graph_snapshots/semiconductor-sec-reviewed-v1.json --output reports/semiconductor-graph.html
+.venv\Scripts\python.exe -m alpha_workbench build-graph-from-evidence --help
 python -m alpha_workbench backtest --prices data/demo_prices.csv --factors data/demo_factors.csv --as-of 2024-01-05T21:00:00+00:00
 python -m alpha_workbench scenario --edges data/semiconductor_edges.json --shock TSM --severity 0.9 --as-of 2024-01-15T00:00:00+00:00
 scripts\setup.ps1
 scripts\run-demos.ps1
 ```
 
-The current suite has 80 passing tests with the command above. Replayable
+The current suite has 81 passing tests with the command above. Replayable
 synthetic demo output is recorded in `docs/reference/demo-results.md`. A live
 NVIDIA 10-K and AMD 10-K produced draft, provenance-validated manufacturing
 dependencies on TSM; a TSMC 20-F correctly produced no proposal when no
@@ -129,3 +135,5 @@ write-once and use the bounded Graph Adjudicator policy. See
 `docs/decisions/0003-agent-managed-living-graph.md`. The full-page evidence and
 Luna graph trial is recorded in
 `docs/research/2026-09-02-web-content-and-luna-graph-trial.md`.
+The first 10-company live build is recorded in
+`docs/research/2026-09-03-semiconductor-core-graph-build.md`.

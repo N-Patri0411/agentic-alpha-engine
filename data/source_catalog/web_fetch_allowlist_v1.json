@@ -13,6 +13,25 @@
     "cetas.turing.ac.uk",
     "www.tandfonline.com",
     "www.asml.com",
-    "ir.appliedmaterials.com"
+    "ir.appliedmaterials.com",
+    "www.appliedmaterials.com",
+    "gf.com",
+    "investors.gf.com",
+    "investors.micron.com",
+    "www.umc.com"
+  ],
+  "official_hosts": [
+    "nvidianews.nvidia.com",
+    "ir.amd.com",
+    "investor.tsmc.com",
+    "news.skhynix.com",
+    "news.samsung.com",
+    "www.asml.com",
+    "ir.appliedmaterials.com",
+    "www.appliedmaterials.com",
+    "gf.com",
+    "investors.gf.com",
+    "investors.micron.com",
+    "www.umc.com"
   ]
 }

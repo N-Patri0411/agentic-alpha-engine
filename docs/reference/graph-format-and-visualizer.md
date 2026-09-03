@@ -66,3 +66,25 @@ To view the local Luna trial graph used in the latest experiment, run:
 
 That trial includes the proposed SK hynix to NVIDIA relationship. It is a local
 scratch artifact, not a replacement for the tracked reviewed snapshot.
+
+## Build a bounded graph from collected evidence
+
+The manual graph-build command connects the real Extraction and Graph
+Adjudication agents. It selects a small number of unseen, official,
+pair-specific passages, records typed A2A messages, and writes a new local
+snapshot without overwriting its input:
+
+```powershell
+.venv\Scripts\python.exe -m alpha_workbench build-graph-from-evidence `
+  --evidence-run semiconductor-core-relationship-content-v3-2026-09-03 `
+  --current-snapshot artifacts/live-agent-trials/live-luna-graph-2026-09-02-snapshot.json `
+  --snapshot-id semiconductor-core-demo `
+  --snapshot-output artifacts/semiconductor-core-demo.json `
+  --run-id semiconductor-core-demo `
+  --max-observations 5
+```
+
+The five-passage limit is intentional: it keeps the manual Luna budget and the
+reviewable evidence scope predictable. A rejected passage remains a useful
+negative result; the command does not create an edge simply to make a graph look
+more complete.
