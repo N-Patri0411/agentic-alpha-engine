@@ -29,6 +29,9 @@ Evidence-first source layer and bounded living-graph foundation.
   Tavily discovery results, and Alpha Vantage daily bars for six tradeable
   entities. It records a receipt for every attempted adapter call rather than
   hiding failures.
+- A real source smoke run confirmed live SEC, Tavily, and Alpha Vantage paths;
+  the tracked research receipt documents the source-specific outcomes and known
+  official-newsroom access failures rather than implying uniform coverage.
 - The Extraction Agent now accepts common text observations, rather than only
   SEC-specific requests. It produces the same constrained relationship drafts
   after source collection has preserved the original evidence.
@@ -63,11 +66,11 @@ Evidence-first source layer and bounded living-graph foundation.
    as versioned inputs to an honest backtest.
 4. Add a small scheduler/CLI wrapper around the bounded intake and nightly
    consolidation services; it must remain manual-started in development.
-5. Add persistent source watermarks so repeated collection selects only new
+5. Add reviewed official RSS/feed or documented-download fallbacks for the
+   remaining Micron, GlobalFoundries, and UMC newsroom access failures; do not
+   evade site access controls.
+6. Add persistent source watermarks so repeated collection selects only new
    filings, releases, and bars rather than relying solely on ledger idempotency.
-6. Run and document a real whole-source smoke collection after local
-   `ALPHAVANTAGE_API_KEY` and `TAVILY_API_KEY` are configured; do not use free
-   market data for historical alpha claims.
 7. Extend evidence conflict/outlier clustering, then replay static and evolving
    snapshots across documented semiconductor events without future leakage.
 8. Only after those baselines exist, resume feature/alpha-generation work.
@@ -102,7 +105,7 @@ scripts\setup.ps1
 scripts\run-demos.ps1
 ```
 
-The current suite has 75 passing tests with the command above. Replayable
+The current suite has 76 passing tests with the command above. Replayable
 synthetic demo output is recorded in `docs/reference/demo-results.md`. A live
 NVIDIA 10-K and AMD 10-K produced draft, provenance-validated manufacturing
 dependencies on TSM; a TSMC 20-F correctly produced no proposal when no
