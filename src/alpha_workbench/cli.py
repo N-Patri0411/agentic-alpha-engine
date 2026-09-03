@@ -92,6 +92,17 @@ def _parser() -> argparse.ArgumentParser:
     enrich.add_argument(
         "--ledger", type=Path, default=Path("data/private/evidence.duckdb")
     )
+    discover = commands.add_parser(
+        "discover-web",
+        help="run one bounded Tavily discovery query for an approved entity",
+    )
+    discover.add_argument("--issuer", required=True)
+    discover.add_argument("--query", required=True)
+    discover.add_argument("--run-id", default=None)
+    discover.add_argument("--max-results", type=int, default=5)
+    discover.add_argument(
+        "--ledger", type=Path, default=Path("data/private/evidence.duckdb")
+    )
     return parser
 
 
@@ -126,6 +137,47 @@ def main(argv: Sequence[str] | None = None) -> int:
         print(json.dumps(result.model_dump(mode="json"), indent=2, sort_keys=True))
         return 0
     root = Path.cwd()
+    if args.command == "discover-web":
+        if args.max_results < 1 or args.max_results > 10:
+            raise ValueError("max-results must be between 1 and 10")
+        run_id = args.run_id or f"web-discovery-{datetime.now(UTC):%Y%m%dT%H%M%SZ}"
+        ledger_path = args.ledger if args.ledger.is_absolute() else root / args.ledger
+        ledger = DuckDBEvidenceLedger(ledger_path)
+        try:
+            registry = EntityRegistry.from_json(
+                root / "data" / "entities" / "semiconductor_v1.json"
+            )
+            if args.issuer not in registry.entity_ids:
+                raise ValueError("issuer must be an approved entity ID")
+            backend = TavilyDiscoverySearchBackend(max_results=args.max_results)
+            discovery_adapter = WebDiscoveryAdapter(search_backend=backend)
+            receipt = EvidenceIntakeService(
+                ledger, {discovery_adapter.name: discovery_adapter}
+            ).collect(
+                adapter_name=discovery_adapter.name,
+                run_id=run_id,
+                query={"issuer_entity_id": args.issuer, "query": args.query, "run_id": run_id},
+            )
+            observations = ledger.observations_for_run(
+                run_id, source_adapter=discovery_adapter.name
+            )
+            discovery_report = {
+                "run_id": run_id,
+                "receipt": receipt.model_dump(mode="json"),
+                "results": [
+                    {
+                        "url": observation.document.source_url,
+                        "title": observation.document.title,
+                        "summary": observation.payload.text[:400],
+                    }
+                    for observation in observations
+                    if isinstance(observation.payload, TextEvidence)
+                ],
+            }
+        finally:
+            ledger.close()
+        print(json.dumps(discovery_report, indent=2, sort_keys=True, default=str))
+        return 0
     if args.command == "enrich-web-discovery":
         if args.limit < 1 or args.limit > 12:
             raise ValueError("limit must be between 1 and 12")
@@ -139,8 +191,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             policy = WebFetchPolicy.from_json(
                 root / "data" / "source_catalog" / "web_fetch_allowlist_v1.json"
             )
-            adapter = WebPageContentAdapter(root / "data" / "cache" / "web", policy)
-            intake = EvidenceIntakeService(ledger, {adapter.name: adapter})
+            content_adapter = WebPageContentAdapter(root / "data" / "cache" / "web", policy)
+            intake = EvidenceIntakeService(ledger, {content_adapter.name: content_adapter})
             aliases = {entity.entity_id: entity.aliases for entity in registry.entities}
             candidates = ledger.observations_for_run(
                 args.discovery_run, source_adapter="web_discovery"
@@ -152,7 +204,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             ][: args.limit]
             receipts = [
                 intake.collect(
-                    adapter_name=adapter.name,
+                    adapter_name=content_adapter.name,
                     run_id=run_id,
                     query={
                         "candidate": candidate.model_dump(mode="json"),
@@ -163,7 +215,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                 )
                 for candidate in allowed
             ]
-            observations = ledger.observations_for_run(run_id, source_adapter=adapter.name)
+            observations = ledger.observations_for_run(run_id, source_adapter=content_adapter.name)
             web_report = {
                 "run_id": run_id,
                 "candidate_count": len(candidates),
