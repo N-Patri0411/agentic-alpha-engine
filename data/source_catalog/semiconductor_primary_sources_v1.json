@@ -13,10 +13,10 @@
     {
       "issuer_entity_id": "NVDA",
       "source_kind": "investor_relations",
-      "url": "https://investor.nvidia.com/news/default.aspx",
+      "url": "https://nvidianews.nvidia.com/news",
       "format": "html_page",
       "polling_hint": "nightly",
-      "usage_note": "NVIDIA official investor-relations newsroom"
+      "usage_note": "NVIDIA official newsroom"
     },
     {
       "issuer_entity_id": "AMD",
@@ -45,10 +45,10 @@
     {
       "issuer_entity_id": "TSM",
       "source_kind": "investor_relations",
-      "url": "https://investor.tsmc.com/english/news",
+      "url": "https://investor.tsmc.com/english",
       "format": "html_page",
       "polling_hint": "nightly",
-      "usage_note": "TSMC official investor-relations news page"
+      "usage_note": "TSMC official investor-relations landing page"
     },
     {
       "issuer_entity_id": "Samsung",
@@ -69,26 +69,26 @@
     {
       "issuer_entity_id": "MU",
       "source_kind": "investor_relations",
-      "url": "https://investors.micron.com/news-releases",
+      "url": "https://investors.micron.com/index.php/",
       "format": "html_page",
       "polling_hint": "nightly",
-      "usage_note": "Micron official investor-relations news page"
+      "usage_note": "Micron official investor-relations landing page"
     },
     {
       "issuer_entity_id": "GFS",
       "source_kind": "investor_relations",
-      "url": "https://investors.gf.com/news-events/news-releases",
+      "url": "https://investors.gf.com/investor-relations/news-events/press-releases",
       "format": "html_page",
       "polling_hint": "nightly",
-      "usage_note": "GlobalFoundries official investor-relations news page"
+      "usage_note": "GlobalFoundries official investor-relations press-release page"
     },
     {
       "issuer_entity_id": "UMC",
       "source_kind": "investor_relations",
-      "url": "https://www.umc.com/en/InvestorServices/News",
+      "url": "https://www.umc.com/en/News/press_release/Index/investor",
       "format": "html_page",
       "polling_hint": "nightly",
-      "usage_note": "UMC official investor-services news page"
+      "usage_note": "UMC official investor press-release page"
     }
   ]
 }

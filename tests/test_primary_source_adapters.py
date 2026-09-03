@@ -259,7 +259,8 @@ def test_official_ir_adapter_handles_atom_without_network(tmp_path: Path) -> Non
 
 def test_official_ir_adapter_collects_bounded_same_site_newsroom_pages(tmp_path: Path) -> None:
     landing_page = b"""
-    <html><body><a href="/news/release-one">Release</a>
+    <html><body><a href="#mainContent">Current page fragment</a>
+    <a href="/news/release-one">Release</a>
     <a href="https://untrusted.example.test/news/ignore">Ignore</a></body></html>
     """
     release_page = b"<p>We rely on a strategic foundry partner for manufacturing capacity.</p>"

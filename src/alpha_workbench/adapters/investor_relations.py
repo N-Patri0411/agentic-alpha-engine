@@ -13,7 +13,7 @@ from datetime import UTC, datetime
 from email.utils import parsedate_to_datetime
 from html.parser import HTMLParser
 from pathlib import Path
-from urllib.parse import urljoin, urlparse
+from urllib.parse import urljoin, urlparse, urlunparse
 
 import httpx
 
@@ -199,17 +199,19 @@ class OfficialInvestorRelationsAdapter:
             return []
         parser = _NewsroomLinkParser()
         parser.feed(landing_page.decode("utf-8", errors="replace"))
-        source_host = urlparse(source.url).netloc.lower()
+        source_parsed = urlparse(source.url)
+        source_host = source_parsed.netloc.lower()
+        source_without_fragment = urlunparse(source_parsed._replace(fragment=""))
         links: list[str] = []
         for href in parser.hrefs:
-            candidate = urljoin(source.url, href)
-            parsed = urlparse(candidate)
+            parsed = urlparse(urljoin(source.url, href))
+            candidate = urlunparse(parsed._replace(fragment=""))
             if parsed.scheme not in {"http", "https"} or parsed.netloc.lower() != source_host:
                 continue
             path = parsed.path.lower()
             if not any(token in path for token in ("news", "press", "release", "article", "story")):
                 continue
-            if candidate != source.url and candidate not in links:
+            if candidate != source_without_fragment and candidate not in links:
                 links.append(candidate)
         observations: list[EvidenceObservation] = []
         for link in links[:max_linked_pages]:
