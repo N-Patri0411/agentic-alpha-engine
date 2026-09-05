@@ -19,6 +19,10 @@ from .base import AdapterHealth
 from .primary_documents import bounded_quote, visible_text
 
 _RELATIONSHIP_TERMS = (
+    "competitor",
+    "compete",
+    "competition",
+    "substitution",
     "supply chain",
     "supplier",
     "supply agreement",
@@ -28,6 +32,8 @@ _RELATIONSHIP_TERMS = (
     "partner",
     "collaboration",
     "customer",
+    "design win",
+    "joint development",
     "contract",
     "dependency",
     "designed for",

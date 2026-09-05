@@ -1,5 +1,6 @@
 """Deterministic preparation of source evidence before LLM interpretation."""
 
+from .open_world import OpenWorldExtractionResult, OpenWorldRelationshipExtractor
 from .proposals import (
     EdgeProposal,
     EvidenceProposalExtractor,
@@ -17,4 +18,6 @@ __all__ = [
     "EvidenceValidator",
     "FilingSectionSelector",
     "NoEdgeProposal",
+    "OpenWorldExtractionResult",
+    "OpenWorldRelationshipExtractor",
 ]

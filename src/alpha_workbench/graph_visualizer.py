@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import json
 from html import escape
 from pathlib import Path
 
@@ -62,7 +63,11 @@ def render_graph_html(
             substitutability=edge.substitutability,
             confidence=edge.confidence,
             freshness=edge.freshness,
+            capacity_stress=edge.capacity_stress,
+            geographic_regulatory_stress=edge.geographic_regulatory_stress,
+            evidence_support=edge.evidence_support,
             evidence_url=edge.evidence.source_url,
+            edge_id=edge.edge_id,
         )
     raw_positions = nx.spring_layout(graph, seed=20260902, k=1.4, iterations=100)
     positions = {
@@ -70,7 +75,28 @@ def render_graph_html(
         for node_id, position in raw_positions.items()
     }
     coordinates = _scaled_coordinates(positions)
-    document = _html_document(graph, coordinates, snapshot.snapshot_id)
+    edge_details = {
+        edge.edge_id: {
+            "direction": f"{edge.upstream_entity_id} → {edge.downstream_entity_id}",
+            "relationship_type": edge.relationship_type,
+            "dependency_strength": edge.dependency_strength,
+            "substitutability": edge.substitutability,
+            "confidence": edge.confidence,
+            "freshness": edge.freshness,
+            "capacity_stress": edge.capacity_stress,
+            "geographic_regulatory_stress": edge.geographic_regulatory_stress,
+            "evidence_support": edge.evidence_support,
+            "effective_from": edge.effective_from.isoformat(),
+            "effective_to": edge.effective_to.isoformat() if edge.effective_to else "open",
+            "source_url": edge.evidence.source_url,
+            "evidence_quote": edge.evidence.evidence_quote,
+            "reviewed_by": edge.review.reviewed_by,
+            "review_decision": edge.review.decision,
+            "review_rationale": edge.review.rationale,
+        }
+        for edge in snapshot.edges
+    }
+    document = _html_document(graph, coordinates, snapshot.snapshot_id, edge_details)
     output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_text(document, encoding="utf-8")
     return GraphRenderReceipt(
@@ -97,11 +123,22 @@ def _scaled_coordinates(
 
 
 def _html_document(
-    graph: nx.DiGraph, coordinates: dict[str, tuple[float, float]], snapshot_id: str
+    graph: nx.DiGraph,
+    coordinates: dict[str, tuple[float, float]],
+    snapshot_id: str,
+    edge_details: dict[str, dict[str, object]],
 ) -> str:
-    edge_svg = "\n".join(_edge_svg(graph, source, target, coordinates) for source, target in graph.edges)
-    node_svg = "\n".join(_node_svg(graph, node_id, coordinates) for node_id in graph.nodes)
-    edge_rows = "\n".join(_edge_row(graph, source, target) for source, target in graph.edges)
+    edge_svg = "\n".join(
+        _edge_svg(graph, source, target, coordinates)
+        for source, target in graph.edges
+    )
+    node_svg = "\n".join(
+        _node_svg(graph, node_id, coordinates) for node_id in graph.nodes
+    )
+    edge_rows = "\n".join(
+        _edge_row(graph, source, target) for source, target in graph.edges
+    )
+    serialized_details = json.dumps(edge_details).replace("</", "<\\/")
     return f"""<!doctype html>
 <html lang="en">
 <head>
@@ -119,6 +156,9 @@ def _html_document(
     table {{ width: 100%; border-collapse: collapse; }} th, td {{ text-align: left; padding: 9px; border-bottom: 1px solid #293552; }}
     a {{ color: #7dd3fc; }} .legend {{ display: flex; gap: 18px; flex-wrap: wrap; font-size: 14px; }}
     .dot {{ display: inline-block; width: 11px; height: 11px; border-radius: 50%; margin-right: 5px; }}
+    .edge {{ cursor: pointer; }} .detail-grid {{ display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 10px; }}
+    .metric {{ background: #0d142a; border-radius: 7px; padding: 9px; }} .metric small {{ color: #94a3b8; display: block; }}
+    blockquote {{ border-left: 3px solid #38bdf8; color: #cbd5e1; margin: 14px 0; padding-left: 12px; }}
   </style>
 </head>
 <body><main>
@@ -132,10 +172,32 @@ def _html_document(
       {node_svg}
     </svg>
   </section>
+  <section class="card"><h2>Selected relationship details</h2><p id="edge-detail-empty">Click an arrow or a table row to inspect every numeric state field, evidence, and review receipt.</p><div id="edge-detail" hidden></div></section>
   <section class="card"><h2>Approved relationships in this snapshot</h2>
     <table><thead><tr><th>Direction</th><th>Type</th><th>Strength</th><th>Confidence</th><th>Evidence</th></tr></thead><tbody>{edge_rows}</tbody></table>
   </section>
-</main></body></html>"""
+</main><script>
+const edgeDetails = {serialized_details};
+function addMetric(parent, label, value) {{
+  const item = document.createElement("div"); item.className = "metric";
+  const heading = document.createElement("small"); heading.textContent = label;
+  const valueNode = document.createElement("strong"); valueNode.textContent = String(value);
+  item.append(heading, valueNode); parent.append(item);
+}}
+function selectEdge(id) {{
+  const edge = edgeDetails[id]; if (!edge) return;
+  const panel = document.getElementById("edge-detail"); panel.replaceChildren(); panel.hidden = false;
+  document.getElementById("edge-detail-empty").hidden = true;
+  const title = document.createElement("h3"); title.textContent = edge.direction + " — " + edge.relationship_type; panel.append(title);
+  const grid = document.createElement("div"); grid.className = "detail-grid";
+  [["Dependency strength", edge.dependency_strength], ["Substitutability", edge.substitutability], ["Confidence", edge.confidence], ["Freshness", edge.freshness], ["Capacity stress", edge.capacity_stress], ["Geographic/regulatory stress", edge.geographic_regulatory_stress], ["Evidence support", edge.evidence_support], ["Effective from", edge.effective_from], ["Effective to", edge.effective_to], ["Review", edge.review_decision + " by " + edge.reviewed_by]].forEach(([label, value]) => addMetric(grid, label, value));
+  panel.append(grid);
+  const quote = document.createElement("blockquote"); quote.textContent = edge.evidence_quote; panel.append(quote);
+  const rationale = document.createElement("p"); rationale.textContent = "Review rationale: " + edge.review_rationale; panel.append(rationale);
+  const source = document.createElement("a"); source.href = edge.source_url; source.textContent = "Open evidence source"; panel.append(source);
+}}
+document.querySelectorAll("[data-edge-id]").forEach((element) => {{ element.addEventListener("click", () => selectEdge(element.dataset.edgeId)); }});
+</script></body></html>"""
 
 
 def _edge_svg(
@@ -147,6 +209,7 @@ def _edge_svg(
     source_x, source_y = coordinates[source]
     target_x, target_y = coordinates[target]
     relationship_type = str(graph.edges[source, target]["relationship_type"])
+    edge_id = str(graph.edges[source, target]["edge_id"])
     color = _RELATIONSHIP_COLORS[relationship_type]
     title = escape(
         f"{source} → {target}: {relationship_type}; strength "
@@ -154,7 +217,7 @@ def _edge_svg(
         f"{graph.edges[source, target]['confidence']:.2f}"
     )
     return (
-        f'<line x1="{source_x:.1f}" y1="{source_y:.1f}" '
+        f'<line class="edge" data-edge-id="{escape(edge_id, quote=True)}" x1="{source_x:.1f}" y1="{source_y:.1f}" '
         f'x2="{target_x:.1f}" y2="{target_y:.1f}" stroke="{color}" '
         f'stroke-width="4" opacity="0.9" marker-end="url(#arrow)"><title>{title}</title></line>'
     )
@@ -177,8 +240,9 @@ def _node_svg(
 
 def _edge_row(graph: nx.DiGraph, source: str, target: str) -> str:
     edge = graph.edges[source, target]
+    edge_id = escape(str(edge["edge_id"]), quote=True)
     return (
-        "<tr>"
+        f'<tr class="edge" data-edge-id="{edge_id}">'
         f"<td>{escape(source)} &rarr; {escape(target)}</td>"
         f"<td>{escape(str(edge['relationship_type']))}</td>"
         f"<td>{edge['dependency_strength']:.2f}</td>"

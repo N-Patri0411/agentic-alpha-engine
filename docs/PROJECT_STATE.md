@@ -70,13 +70,20 @@ Evidence-first source layer and bounded living-graph foundation.
   first 10-company live build added GlobalFoundries-to-AMD and Micron-to-NVIDIA
   dependencies while retaining unproven nodes as isolated; see the dated
   research report for results and rejected candidates.
+- The evidence selector now ranks explicit competition, customer, equipment,
+  and collaboration language in addition to supply relationships. A separate
+  one-hop candidate-evidence graph may show a newly named company next to a
+  core semiconductor anchor without recursively expanding the domain or
+  changing the reviewed scenario graph. The static HTML view now exposes every
+  stored numeric edge state, source quote, and review receipt on click.
 
 ## Next slices
 
-1. Add an incremental evidence watermark so graph workflows process only new or
+1. Connect one-hop candidate discovery to a bounded manual evidence run, then
+   add relationship-specific adjudication rules for competitor, customer, and
+   collaboration candidates before any promotion to a reviewed snapshot.
+2. Add an incremental evidence watermark so graph workflows process only new or
    changed observations, while keeping a full replay option for research.
-2. Package the bounded extraction-to-adjudication path as a manual CLI, then
-   add source-tier promotion and a review screen before scheduled publication.
 3. Add snapshot-diff and event-timeline endpoints, then implement the first
    React/Cytoscape scenario explorer.
 4. Build the ripple-to-factor bridge and use historical scenario-run receipts
@@ -118,13 +125,14 @@ Evidence-first source layer and bounded living-graph foundation.
 .venv\Scripts\python.exe -m alpha_workbench collect-initial-sources --preview-limit 32
 .venv\Scripts\python.exe -m alpha_workbench visualize-graph --snapshot data/graph_snapshots/semiconductor-sec-reviewed-v1.json --output reports/semiconductor-graph.html
 .venv\Scripts\python.exe -m alpha_workbench build-graph-from-evidence --help
+.venv\Scripts\python.exe -m alpha_workbench discover-candidate-graph --help
 python -m alpha_workbench backtest --prices data/demo_prices.csv --factors data/demo_factors.csv --as-of 2024-01-05T21:00:00+00:00
 python -m alpha_workbench scenario --edges data/semiconductor_edges.json --shock TSM --severity 0.9 --as-of 2024-01-15T00:00:00+00:00
 scripts\setup.ps1
 scripts\run-demos.ps1
 ```
 
-The current suite has 81 passing tests with the command above. Replayable
+The current suite has 85 passing tests with the command above. Replayable
 synthetic demo output is recorded in `docs/reference/demo-results.md`. A live
 NVIDIA 10-K and AMD 10-K produced draft, provenance-validated manufacturing
 dependencies on TSM; a TSMC 20-F correctly produced no proposal when no

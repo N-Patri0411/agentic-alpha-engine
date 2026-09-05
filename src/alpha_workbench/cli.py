@@ -24,11 +24,17 @@ from .agents import FilingExtractionRequest, build_extraction_agent
 from .agents.extraction_graph_workflow import ExtractionGraphWorkflow
 from .agents.graph_adjudicator import GraphAdjudicatorAgent
 from .backtest import backtest_long_short
+from .candidate_discovery import (
+    observation_to_passage,
+    select_candidate_discovery_observations,
+)
+from .candidate_graph import CandidateGraphBuilder
 from .data import FrozenCSVMarketDataProvider, load_factors, parse_as_of
 from .evidence.contracts import TextEvidence
 from .evidence.initial_source_run import InitialSemiconductorSourceRun
 from .evidence.ledger import DuckDBEvidenceLedger
 from .evidence.runtime import EvidenceIntakeService
+from .extraction import OpenWorldRelationshipExtractor
 from .graph import SupplyChainGraph
 from .graph_build import current_utc, select_graph_build_observations
 from .graph_registry import EntityRegistry, GraphPublisher, GraphSnapshot, RippleRiskScorer
@@ -134,6 +140,17 @@ def _parser() -> argparse.ArgumentParser:
     graph_build.add_argument(
         "--message-bus", type=Path, default=Path("data/private/graph_build_messages.duckdb")
     )
+    candidate_graph = commands.add_parser(
+        "discover-candidate-graph",
+        help="discover one-hop candidate entities from bounded official evidence",
+    )
+    candidate_graph.add_argument("--evidence-run", required=True)
+    candidate_graph.add_argument("--run-id", required=True)
+    candidate_graph.add_argument("--output", type=Path, required=True)
+    candidate_graph.add_argument("--max-observations", type=int, default=5)
+    candidate_graph.add_argument(
+        "--ledger", type=Path, default=Path("data/private/evidence.duckdb")
+    )
     return parser
 
 
@@ -168,6 +185,60 @@ def main(argv: Sequence[str] | None = None) -> int:
         print(json.dumps(result.model_dump(mode="json"), indent=2, sort_keys=True))
         return 0
     root = Path.cwd()
+    if args.command == "discover-candidate-graph":
+        ledger_path = args.ledger if args.ledger.is_absolute() else root / args.ledger
+        output_path = args.output if args.output.is_absolute() else root / args.output
+        if output_path.exists():
+            raise ValueError("candidate graph output already exists; choose a new path")
+        registry = EntityRegistry.from_json(root / "data" / "entities" / "semiconductor_v1.json")
+        ledger = DuckDBEvidenceLedger(ledger_path)
+        try:
+            observations = ledger.observations_for_run(args.evidence_run)
+            candidate_selected, candidate_selection = select_candidate_discovery_observations(
+                observations=observations,
+                maximum_observations=args.max_observations,
+            )
+        finally:
+            ledger.close()
+        candidate_aliases = {
+            entity.entity_id: (entity.legal_name, entity.entity_id, *entity.aliases)
+            for entity in registry.entities
+        }
+        extractor = OpenWorldRelationshipExtractor(
+            create_llm(load_model_config(root / "config" / "models.yaml", "extraction")),
+            candidate_aliases,
+        )
+        relationships = []
+        for observation in candidate_selected:
+            candidate_result = extractor.extract(
+                observation_to_passage(observation),
+                available_at=observation.document.available_at.isoformat(),
+            )
+            relationships.extend(candidate_result.relationships)
+        candidate_graph = CandidateGraphBuilder(registry).build(relationships)
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        output_path.write_text(
+            candidate_graph.model_dump_json(indent=2), encoding="utf-8"
+        )
+        print(
+            json.dumps(
+                {
+                    "run_id": args.run_id,
+                    "selection": candidate_selection.model_dump(mode="json"),
+                    "candidate_node_count": len(candidate_graph.nodes),
+                    "candidate_edge_count": len(candidate_graph.edges),
+                    "ignored_relationship_count": candidate_graph.ignored_relationship_count,
+                    "output": str(output_path),
+                    "warning": (
+                        "Candidate evidence only: this file cannot update a reviewed "
+                        "snapshot or be scored by RippleRiskScorer."
+                    ),
+                },
+                indent=2,
+                sort_keys=True,
+            )
+        )
+        return 0
     if args.command == "build-graph-from-evidence":
         ledger_path = args.ledger if args.ledger.is_absolute() else root / args.ledger
         snapshot_path = (
@@ -311,7 +382,9 @@ def main(argv: Sequence[str] | None = None) -> int:
             )
             content_adapter = WebPageContentAdapter(root / "data" / "cache" / "web", policy)
             intake = EvidenceIntakeService(ledger, {content_adapter.name: content_adapter})
-            aliases = {entity.entity_id: entity.aliases for entity in registry.entities}
+            entity_aliases = {
+                entity.entity_id: entity.aliases for entity in registry.entities
+            }
             candidates = ledger.observations_for_run(
                 args.discovery_run, source_adapter="web_discovery"
             )
@@ -331,7 +404,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                     run_id=run_id,
                     query={
                         "candidate": candidate.model_dump(mode="json"),
-                        "entity_aliases": aliases,
+                        "entity_aliases": entity_aliases,
                         "max_passages": 2,
                         "run_id": run_id,
                     },

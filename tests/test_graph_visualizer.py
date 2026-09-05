@@ -24,3 +24,7 @@ def test_visualizer_renders_all_ten_registry_nodes_and_snapshot_edges(tmp_path: 
     assert ">AMAT<" in page
     assert "TSM &rarr; NVDA" in page
     assert "manufacturing_dependency" in page
+    assert "Selected relationship details" in page
+    assert "Substitutability" in page
+    assert "data-edge-id" in page
+    assert '<tr class="edge" data-edge-id=' in page

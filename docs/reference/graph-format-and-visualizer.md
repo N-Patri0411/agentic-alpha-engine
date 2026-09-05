@@ -39,6 +39,27 @@ For example, a simplified relationship is:
 The JSON contract is the source of truth. NetworkX is used only to lay it out
 for viewing; it never makes graph decisions or writes graph snapshots.
 
+## Candidate evidence graph versus reviewed scenario graph
+
+The reviewed snapshot deliberately remains strict: it contains only approved,
+effective-dated relationships whose state is safe for deterministic scenario
+replay. It is not a claim that these are the only relationships in the real
+industry.
+
+Before that decision, the extraction system can create a separate **candidate
+evidence graph**. It starts with the ten approved semiconductor anchors and may
+add a newly named company, such as Microsoft, Apple, or HP, as a candidate node
+when a source directly connects it to an anchor. This is capped at one hop:
+Microsoft can be connected to NVIDIA or AMD, but a Microsoft-to-Apple claim is
+not used to expand the graph further. That makes the graph useful for discovery
+without turning one vague source into an unbounded crawl.
+
+Candidate relationships retain their exact quote, source URL, availability
+time, type, rationale, and suggested confidence. They are never automatically
+scored by `RippleRiskScorer`, written into a reviewed snapshot, or used as a
+trading input. The Graph Adjudicator must later validate and promote a candidate
+under rules specific to its relationship type.
+
 ## Create a visual view
 
 After running `setup.cmd` or installing the requirements, create an HTML graph
@@ -52,9 +73,10 @@ from a reviewed snapshot:
 
 The output is a local HTML file. Blue circles are tradeable instruments; green
 circles are relevant but non-tradeable companies. Dim nodes are intentionally
-isolated because the system has not approved an edge for them yet. Edge arrows
-show the supply/cause direction, and the table below the diagram links each edge
-to its evidence source.
+isolated because the system has not approved an edge yet. Edge arrows show the
+supply/cause direction. Click an arrow or its table row to inspect dependency
+strength, substitutability, confidence, freshness, stress values, evidence
+support, exact source quote, and review receipt.
 
 To view the local Luna trial graph used in the latest experiment, run:
 
@@ -88,3 +110,25 @@ The five-passage limit is intentional: it keeps the manual Luna budget and the
 reviewable evidence scope predictable. A rejected passage remains a useful
 negative result; the command does not create an edge simply to make a graph look
 more complete.
+
+## Discover bounded external candidates
+
+To inspect direct relationships that mention a company outside the initial ten,
+run the separate candidate-discovery command on evidence that has already been
+collected. It uses the model configured for the Extraction role (currently Luna)
+but accepts only primary/official full-text observations, never search-result
+summaries or market bars.
+
+```powershell
+.venv\Scripts\python.exe -m alpha_workbench discover-candidate-graph `
+  --evidence-run semiconductor-core-relationship-content-v3-2026-09-03 `
+  --run-id semiconductor-candidate-demo `
+  --output artifacts/semiconductor-candidate-demo.json `
+  --max-observations 5
+```
+
+The output belongs under ignored `artifacts/`. It is a review artifact: it can
+show a newly named first-hop node, its direct source quote, and a candidate
+relationship type. It does not publish a snapshot, replace the ten-anchor
+registry, or run a scenario. A later Graph Adjudicator policy must decide whether
+each candidate has sufficient evidence to promote.

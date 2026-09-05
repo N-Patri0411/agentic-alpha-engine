@@ -11,12 +11,27 @@ from pydantic import BaseModel, Field
 from ..adapters.base import SourceSnapshot
 
 _KEYWORDS = (
+    "competitor",
+    "competition",
+    "compete",
+    "substitute",
     "supplier",
     "supply chain",
+    "supply agreement",
+    "wafer supply",
     "manufactur",
     "foundry",
+    "lithography",
+    "deposition",
+    "etch",
     "capacity",
+    "customer",
     "customer concentration",
+    "design win",
+    "joint development",
+    "collaboration",
+    "co-investment",
+    "license",
     "sole source",
     "single source",
     "packaging",
@@ -26,6 +41,10 @@ _KEYWORDS = (
 # generic industry reference (for example, "manufacturing" in a product-market
 # description). They rank passages; they do not create an edge by themselves.
 _RELATIONSHIP_PHRASES = (
+    "we compete with",
+    "our competitors include",
+    "competes with",
+    "alternative to",
     "we utilize",
     "we purchase",
     "we engage",
@@ -35,6 +54,12 @@ _RELATIONSHIP_PHRASES = (
     "supply agreement",
     "manufacturing capacity",
     "supply constraints",
+    "wafer supply agreement",
+    "design win",
+    "joint development",
+    "strategic collaboration",
+    "customer agreement",
+    "license agreement",
     "sole source",
     "single source",
 )

@@ -79,3 +79,23 @@ def test_selector_ranks_relationship_language_above_generic_industry_text(
     )
     selected = FilingSectionSelector(window_characters=250).select(cached, snapshot)
     assert "We utilize foundries" in selected[0].text
+
+
+def test_selector_discovers_explicit_competition_and_customer_language(tmp_path: Path) -> None:
+    cached = tmp_path / "competition.html"
+    cached.write_text(
+        "<p>Our competitors include NVIDIA and AMD in accelerated computing.</p>"
+        "<p>A named customer design win expands our platform deployment.</p>",
+        encoding="utf-8",
+    )
+    snapshot = SourceSnapshot(
+        source="sec_filings", source_url="https://example.test/filing",
+        retrieved_at=datetime.now(UTC), observed_at=datetime.now(UTC),
+        available_at=datetime.now(UTC), content_sha256="e" * 64, usage_note="fixture",
+    )
+
+    selected = FilingSectionSelector(window_characters=200).select(cached, snapshot)
+
+    assert selected
+    assert any("competitor" in passage.matching_keywords for passage in selected)
+    assert any("design win" in passage.matching_keywords for passage in selected)
