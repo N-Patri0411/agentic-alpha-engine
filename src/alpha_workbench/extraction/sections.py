@@ -111,6 +111,12 @@ class DocumentPassage(BaseModel):
     end_offset: int = Field(gt=0)
     text: str = Field(min_length=1)
     matching_keywords: list[str] = Field(min_length=1)
+    source_tier: str | None = None
+    source_kind: str | None = None
+    source_adapter: str | None = None
+    source_title: str | None = None
+    observation_id: str | None = None
+    evidence_basis: str = "full_text"
 
 
 class FilingSectionSelector:

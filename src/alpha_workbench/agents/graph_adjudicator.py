@@ -294,21 +294,13 @@ class GraphAdjudicatorAgent:
     def _apply_discovery_guard(
         decision: GraphAdjudication, cluster: list[EvidenceObservation]
     ) -> GraphAdjudication:
-        distinct_sources = {item.document.source_url for item in cluster}
-        has_strong_source = any(
-            item.document.source_tier in {"primary", "official"} for item in cluster
-        )
-        if (
-            decision.action == "approve_edge"
-            and not has_strong_source
-            and len(distinct_sources) < 2
-        ):
-            return decision.model_copy(
-                update={
-                    "action": "hold",
-                    "rationale": "single discovery observation requires corroboration",
-                }
-            )
+        """Keep discovery evidence in normal adjudication.
+
+        Discovery observations retain lower reliability and freshness weights;
+        this hook must not turn source tier into a hard admission rule. Model
+        validation, entity checks, and the explicit adjudicator decision remain
+        required before publication.
+        """
         return decision
 
     def _apply_decision(

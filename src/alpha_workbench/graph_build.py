@@ -23,7 +23,7 @@ def select_graph_build_observations(
     current_snapshot: GraphSnapshot,
     maximum_observations: int,
 ) -> tuple[list[EvidenceObservation], GraphBuildSelection]:
-    """Select one official, pair-specific passage per unseen entity pair.
+    """Select one text, pair-specific passage per unseen entity pair.
 
     A conservative limit keeps a manual Luna run predictable. Existing pairs are
     not re-proposed in a first domain-map build; later graph-maintenance runs
@@ -40,7 +40,6 @@ def select_graph_build_observations(
         observation
         for observation in observations
         if isinstance(observation.payload, TextEvidence)
-        and observation.document.source_tier in {"primary", "official"}
         and len(observation.mentioned_entity_ids) == 2
     ]
     candidates.sort(
@@ -64,7 +63,7 @@ def select_graph_build_observations(
         if len(selected) == maximum_observations:
             break
     if not selected:
-        raise ValueError("no unseen official pair-specific observations were available")
+        raise ValueError("no unseen pair-specific text observations were available")
     return selected, GraphBuildSelection(
         selected_observation_ids=[str(observation.observation_id) for observation in selected],
         skipped_existing_pair_count=skipped_existing,

@@ -43,7 +43,7 @@ def _observation(*, source_tier: str, entities: tuple[str, str], url: str) -> Ev
     )
 
 
-def test_graph_build_selection_prefers_unseen_official_pairs() -> None:
+def test_graph_build_selection_accepts_unseen_pairs_from_all_text_tiers() -> None:
     selected, receipt = select_graph_build_observations(
         observations=[
             _observation(
@@ -73,6 +73,8 @@ def test_graph_build_selection_prefers_unseen_official_pairs() -> None:
 
     assert [item.mentioned_entity_ids for item in selected] == [
         ("ASML", "TSM"),
-        ("NVDA", "Hynix"),
+        ("AMD", "GFS"),
     ]
-    assert receipt.skipped_existing_pair_count == 1
+    # The bounded selector stops after two unseen pairs, before reaching the
+    # later existing-pair URL in deterministic URL order.
+    assert receipt.skipped_existing_pair_count == 0

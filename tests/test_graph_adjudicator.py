@@ -81,7 +81,7 @@ def test_adjudicator_resolves_alias_and_applies_bounded_state_update() -> None:
     assert report.published_snapshot_id == "fixture-next"
 
 
-def test_single_discovery_result_cannot_auto_publish_new_edge() -> None:
+def test_single_discovery_result_can_be_considered_by_adjudication() -> None:
     observation = _observation(tier="discovery")
     response = {
         "action": "approve_edge",
@@ -100,7 +100,7 @@ def test_single_discovery_result_cannot_auto_publish_new_edge() -> None:
     )
 
     assert snapshot.edges == current.edges
-    assert report.decisions[0].action == "hold"
+    assert report.decisions[0].action == "approve_edge"
 
 
 def test_two_discovery_sources_can_support_an_auto_published_edge() -> None:

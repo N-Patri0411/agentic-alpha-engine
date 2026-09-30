@@ -39,6 +39,11 @@ class DiscoveredRelationship(BaseModel):
     available_at: datetime
     rationale: str = Field(min_length=1)
     suggested_confidence: float = Field(ge=0, le=1)
+    source_tier: str = "unknown"
+    source_kind: str = "unknown"
+    source_adapter: str = "unknown"
+    observation_id: str | None = None
+    evidence_basis: Literal["full_text", "discovery_summary", "unknown"] = "unknown"
 
     @model_validator(mode="after")
     def evidence_must_be_verbatim(self) -> DiscoveredRelationship:
@@ -69,6 +74,11 @@ class CandidateGraphEdge(BaseModel):
     available_at: datetime
     rationale: str = Field(min_length=1)
     suggested_confidence: float = Field(ge=0, le=1)
+    source_tier: str = "unknown"
+    source_kind: str = "unknown"
+    source_adapter: str = "unknown"
+    observation_id: str | None = None
+    evidence_basis: Literal["full_text", "discovery_summary", "unknown"] = "unknown"
 
 
 class CandidateEvidenceGraph(BaseModel):
@@ -144,6 +154,11 @@ class CandidateGraphBuilder:
                     available_at=relationship.available_at,
                     rationale=relationship.rationale,
                     suggested_confidence=relationship.suggested_confidence,
+                    source_tier=relationship.source_tier,
+                    source_kind=relationship.source_kind,
+                    source_adapter=relationship.source_adapter,
+                    observation_id=relationship.observation_id,
+                    evidence_basis=relationship.evidence_basis,
                 )
             )
         return CandidateEvidenceGraph(

@@ -92,8 +92,8 @@ scratch artifact, not a replacement for the tracked reviewed snapshot.
 ## Build a bounded graph from collected evidence
 
 The manual graph-build command connects the real Extraction and Graph
-Adjudication agents. It selects a small number of unseen, official,
-pair-specific passages, records typed A2A messages, and writes a new local
+Adjudication agents. It selects a small number of unseen, pair-specific text
+passages across configured source tiers, records typed A2A messages, and writes a new local
 snapshot without overwriting its input:
 
 ```powershell
@@ -116,8 +116,10 @@ more complete.
 To inspect direct relationships that mention a company outside the initial ten,
 run the separate candidate-discovery command on evidence that has already been
 collected. It uses the model configured for the Extraction role (currently Luna)
-but accepts only primary/official full-text observations, never search-result
-summaries or market bars.
+and accepts text observations from every configured source tier, including
+discovery summaries. Summaries carry a weaker evidence basis and must not be
+confused with full-page text. Market bars remain numeric data and cannot create
+a relationship on their own.
 
 ```powershell
 .venv\Scripts\python.exe -m alpha_workbench discover-candidate-graph `
@@ -132,3 +134,18 @@ show a newly named first-hop node, its direct source quote, and a candidate
 relationship type. It does not publish a snapshot, replace the ten-anchor
 registry, or run a scenario. A later Graph Adjudicator policy must decide whether
 each candidate has sufficient evidence to promote.
+
+Render the candidate JSON separately from approved snapshots:
+
+```powershell
+.venv\Scripts\python.exe -m alpha_workbench visualize-candidate-graph `
+  --candidate-graph artifacts/semiconductor-candidate-demo.json `
+  --output reports/semiconductor-candidate-demo.html
+```
+
+The viewer shows source tier, evidence basis, relationship type, confidence,
+and the supporting passage or summary. The current selector is bounded to at
+most eight observations per manual run to limit model spending; that is a run
+budget, not a restriction to official sources. It does not guarantee all ten
+core nodes acquire a relationship. More pair-specific source material is
+needed before that claim can be made.

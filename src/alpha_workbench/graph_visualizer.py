@@ -10,6 +10,7 @@ from pathlib import Path
 import networkx as nx
 from pydantic import BaseModel, Field
 
+from .candidate_graph import CandidateEvidenceGraph
 from .graph_registry import EntityRegistry, GraphSnapshot
 
 _RELATIONSHIP_COLORS = {
@@ -103,6 +104,58 @@ def render_graph_html(
         snapshot_id=snapshot.snapshot_id,
         node_count=graph.number_of_nodes(),
         edge_count=graph.number_of_edges(),
+        output_path=str(output_path),
+    )
+
+
+def render_candidate_graph_html(
+    *, candidate_graph: CandidateEvidenceGraph, output_path: Path
+) -> GraphRenderReceipt:
+    """Render the bounded candidate layer, including weak and unapproved evidence.
+
+    This view intentionally uses a table rather than implying that candidate
+    edges are approved scenario edges. It keeps every registry anchor visible,
+    including isolated nodes, and exposes provenance needed for manual review.
+    """
+
+    nodes = sorted(candidate_graph.nodes, key=lambda node: (node.discovery_depth, node.entity_id))
+    rows = []
+    for edge in candidate_graph.edges:
+        rows.append(
+            "<tr>"
+            f"<td>{escape(edge.source_entity_id)} &rarr; {escape(edge.target_entity_id)}</td>"
+            f"<td>{escape(edge.relationship_type)}</td><td>{escape(edge.status)}</td>"
+            f"<td>{edge.suggested_confidence:.2f}</td>"
+            f"<td>{escape(edge.source_tier)} / {escape(edge.source_kind)}</td>"
+            f"<td>{escape(edge.evidence_basis)}</td>"
+            f"<td><blockquote>{escape(edge.evidence_quote)}</blockquote>"
+            f"<a href=\"{escape(edge.source_url, quote=True)}\">source</a></td></tr>"
+        )
+    node_rows = "".join(
+        f"<tr><td>{escape(node.entity_id)}</td><td>{escape(node.display_name)}</td>"
+        f"<td>{escape(node.kind)}</td><td>{node.status}</td><td>{node.discovery_depth}</td></tr>"
+        for node in nodes
+    )
+    document = f"""<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Candidate evidence graph</title><style>
+body {{ background:#0b1020;color:#e5e7eb;font-family:Segoe UI,sans-serif;margin:0;padding:24px }}
+main {{ max-width:1400px;margin:auto }} .card {{ background:#111936;border:1px solid #293552;border-radius:12px;padding:16px;margin-top:18px }}
+table {{ width:100%;border-collapse:collapse }} th,td {{ text-align:left;padding:9px;border-bottom:1px solid #293552;vertical-align:top }}
+blockquote {{ border-left:3px solid #38bdf8;margin:0;padding-left:10px;color:#cbd5e1 }}
+.muted {{ color:#a5b4cc }} code {{ color:#7dd3fc }} a {{ color:#7dd3fc }}
+</style></head><body><main>
+<h1>Candidate evidence graph</h1>
+<p class="muted">Registry <code>{escape(candidate_graph.registry_id)}</code>. Candidate edges are unapproved research leads; source tier and evidence basis are preserved for review.</p>
+<section class="card"><h2>Entities ({len(nodes)})</h2><table><thead><tr><th>ID</th><th>Name</th><th>Kind</th><th>Status</th><th>Depth</th></tr></thead><tbody>{node_rows}</tbody></table></section>
+<section class="card"><h2>Candidate relationships ({len(candidate_graph.edges)})</h2><table><thead><tr><th>Direction</th><th>Type</th><th>Status</th><th>Confidence</th><th>Source tier/kind</th><th>Evidence basis</th><th>Quote/source</th></tr></thead><tbody>{''.join(rows)}</tbody></table></section>
+<p class="muted">Ignored relationships: {candidate_graph.ignored_relationship_count}</p></main></body></html>"""
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    output_path.write_text(document, encoding="utf-8")
+    return GraphRenderReceipt(
+        snapshot_id=f"candidate:{candidate_graph.registry_id}",
+        node_count=len(nodes),
+        edge_count=len(candidate_graph.edges),
         output_path=str(output_path),
     )
 

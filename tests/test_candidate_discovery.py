@@ -51,8 +51,14 @@ def _text_observation() -> EvidenceObservation:
     )
 
 
-def test_candidate_discovery_selects_only_primary_or_official_text() -> None:
+def test_candidate_discovery_selects_all_text_but_not_market_bars() -> None:
     official = _text_observation()
+    discovery = official.model_copy(
+        update={
+            "idempotency_key": "discovery-fixture",
+            "document": _document(tier="discovery"),
+        }
+    )
     market = official.model_copy(
         update={
             "idempotency_key": "market-fixture",
@@ -70,11 +76,13 @@ def test_candidate_discovery_selects_only_primary_or_official_text() -> None:
     )
 
     selected, receipt = select_candidate_discovery_observations(
-        observations=[market, official], maximum_observations=2
+        observations=[market, discovery, official], maximum_observations=3
     )
 
-    assert selected == [official]
+    assert selected == [discovery, official]
+    assert receipt.skipped_non_text_count == 1
     assert receipt.skipped_non_text_or_non_primary_count == 1
+    assert receipt.selected_source_tiers == {"discovery": 1, "official": 1}
 
 
 def test_candidate_discovery_converts_original_source_span_to_passage() -> None:
@@ -83,8 +91,55 @@ def test_candidate_discovery_converts_original_source_span_to_passage() -> None:
     assert passage.start_offset == 0
     assert passage.end_offset == 58
     assert passage.matching_keywords == ["candidate_discovery"]
+    assert passage.source_tier == "official"
+    assert passage.source_kind == "investor_relations"
+    assert passage.evidence_basis == "full_text"
+
+
+def test_candidate_discovery_marks_discovery_summary_as_weak_provenance() -> None:
+    observation = _text_observation().model_copy(
+        update={"document": _document(tier="discovery")}
+    )
+    passage = observation_to_passage(observation)
+    assert passage.evidence_basis == "discovery_summary"
+
+
+def test_candidate_discovery_maximizes_new_entity_pair_coverage() -> None:
+    repeated = _text_observation().model_copy(
+        update={
+            "idempotency_key": "repeat",
+            "mentioned_entity_ids": ("NVDA", "AMD"),
+        }
+    )
+    novel = _text_observation().model_copy(
+        update={
+            "idempotency_key": "novel",
+            "mentioned_entity_ids": ("NVDA", "TSM"),
+        }
+    )
+    selected, _ = select_candidate_discovery_observations(
+        observations=[repeated, novel, repeated.model_copy(update={"idempotency_key": "repeat-2"})],
+        maximum_observations=2,
+    )
+    assert {item.idempotency_key for item in selected} == {"repeat", "novel"}
+
+
+def test_candidate_discovery_uses_earliest_observation_on_coverage_tie() -> None:
+    early = _text_observation().model_copy(update={"idempotency_key": "early"})
+    late = _text_observation().model_copy(
+        update={
+            "idempotency_key": "late",
+            "document": _document().model_copy(
+                update={"available_at": datetime(2026, 9, 5, tzinfo=UTC)}
+            ),
+        }
+    )
+    selected, _ = select_candidate_discovery_observations(
+        observations=[late, early], maximum_observations=1
+    )
+    assert selected[0].idempotency_key == "early"
 
 
 def test_candidate_discovery_rejects_empty_eligible_input() -> None:
-    with pytest.raises(ValueError, match="no primary or official text"):
+    with pytest.raises(ValueError, match="no text observations"):
         select_candidate_discovery_observations(observations=[], maximum_observations=1)

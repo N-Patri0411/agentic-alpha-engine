@@ -3,10 +3,13 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 from collections.abc import Sequence
 from datetime import UTC, datetime
 from pathlib import Path
+
+import pandas as pd
 
 from .a2a import DuckDBMessageBus
 from .adapters import (
@@ -23,12 +26,13 @@ from .adapters import (
 from .agents import FilingExtractionRequest, build_extraction_agent
 from .agents.extraction_graph_workflow import ExtractionGraphWorkflow
 from .agents.graph_adjudicator import GraphAdjudicatorAgent
+from .alpha.pipeline import run_graph_pipeline, run_offline_pipeline
 from .backtest import backtest_long_short
 from .candidate_discovery import (
     observation_to_passage,
     select_candidate_discovery_observations,
 )
-from .candidate_graph import CandidateGraphBuilder
+from .candidate_graph import CandidateEvidenceGraph, CandidateGraphBuilder
 from .data import FrozenCSVMarketDataProvider, load_factors, parse_as_of
 from .evidence.contracts import TextEvidence
 from .evidence.initial_source_run import InitialSemiconductorSourceRun
@@ -38,7 +42,7 @@ from .extraction import OpenWorldRelationshipExtractor
 from .graph import SupplyChainGraph
 from .graph_build import current_utc, select_graph_build_observations
 from .graph_registry import EntityRegistry, GraphPublisher, GraphSnapshot, RippleRiskScorer
-from .graph_visualizer import render_graph_html
+from .graph_visualizer import render_candidate_graph_html, render_graph_html
 from .llm.models import create_llm, load_model_config
 
 
@@ -52,6 +56,32 @@ def _parser() -> argparse.ArgumentParser:
     backtest.add_argument("--as-of", required=True, help="timezone-aware ISO timestamp")
     backtest.add_argument("--cost-bps", type=float, default=5.0)
     backtest.add_argument("--trial-count", type=int, default=1)
+
+    manual = commands.add_parser(
+        "alpha-run",
+        help="run the bounded pipeline (offline fake by default; optional configured Luna)",
+    )
+    manual.add_argument("--prices", type=Path, required=True)
+    manual.add_argument("--features", type=Path, required=True)
+    manual.add_argument("--feature", dest="feature_names", nargs="+", default=["score"])
+    manual.add_argument("--expression", default="Rank(score)")
+    manual.add_argument("--as-of", required=True, help="timezone-aware ISO timestamp")
+    manual.add_argument("--run-id", default="offline-manual")
+    manual.add_argument("--cost-bps", type=float, default=5.0)
+    manual.add_argument("--llm", choices=("offline", "configured"), default="offline")
+    manual.add_argument("--receipt", type=Path, required=True)
+    graph_manual = commands.add_parser(
+        "alpha-run-graph", help="run the paper pipeline from a reviewed graph and ledger bars"
+    )
+    graph_manual.add_argument("--snapshot", type=Path, required=True)
+    graph_manual.add_argument("--ledger", type=Path, required=True)
+    graph_manual.add_argument("--market-run-id", required=True)
+    graph_manual.add_argument("--shock", required=True)
+    graph_manual.add_argument("--as-of", required=True)
+    graph_manual.add_argument("--expression", default="Neg(graph_ripple_risk)")
+    graph_manual.add_argument("--run-id", default="offline-graph-manual")
+    graph_manual.add_argument("--receipt", type=Path, required=True)
+    graph_manual.add_argument("--llm", choices=("offline", "configured"), default="offline")
 
     scenario = commands.add_parser(
         "scenario", help="run a deterministic supply-chain shock scenario"
@@ -124,9 +154,14 @@ def _parser() -> argparse.ArgumentParser:
     visualize.add_argument(
         "--output", type=Path, default=Path("reports/semiconductor-graph.html")
     )
+    candidate_visualize = commands.add_parser(
+        "visualize-candidate-graph", help="render candidate evidence without implying approval"
+    )
+    candidate_visualize.add_argument("--candidate-graph", type=Path, required=True)
+    candidate_visualize.add_argument("--output", type=Path, required=True)
     graph_build = commands.add_parser(
         "build-graph-from-evidence",
-        help="run bounded Extraction-to-Adjudication over official pair-specific evidence",
+        help="run bounded Extraction-to-Adjudication over all text source tiers",
     )
     graph_build.add_argument("--evidence-run", required=True)
     graph_build.add_argument("--current-snapshot", type=Path, required=True)
@@ -142,7 +177,7 @@ def _parser() -> argparse.ArgumentParser:
     )
     candidate_graph = commands.add_parser(
         "discover-candidate-graph",
-        help="discover one-hop candidate entities from bounded official evidence",
+        help="discover one-hop candidate entities from bounded text evidence across tiers",
     )
     candidate_graph.add_argument("--evidence-run", required=True)
     candidate_graph.add_argument("--run-id", required=True)
@@ -156,6 +191,7 @@ def _parser() -> argparse.ArgumentParser:
 
 def main(argv: Sequence[str] | None = None) -> int:
     args = _parser().parse_args(argv)
+    root = Path.cwd()
     if args.command == "backtest":
         as_of = parse_as_of(args.as_of)
         prices = FrozenCSVMarketDataProvider(args.prices).load_prices(as_of)
@@ -169,11 +205,108 @@ def main(argv: Sequence[str] | None = None) -> int:
         )
         print(json.dumps(backtest_result.report.model_dump(mode="json"), indent=2, sort_keys=True))
         return 0
+    if args.command == "alpha-run":
+        as_of = parse_as_of(args.as_of)
+        prices = FrozenCSVMarketDataProvider(args.prices).load_prices(as_of)
+        features = pd.read_csv(args.features)
+        alpha_receipt = run_offline_pipeline(
+            prices,
+            features,
+            feature_names=args.feature_names,
+            expression=args.expression,
+            as_of_time=as_of,
+            run_id=args.run_id,
+            transaction_cost_bps=args.cost_bps,
+            input_hashes={
+                "prices": hashlib.sha256(args.prices.read_bytes()).hexdigest(),
+                "features": hashlib.sha256(args.features.read_bytes()).hexdigest(),
+            },
+            llm=(
+                create_llm(
+                    load_model_config(
+                        Path.cwd() / "config" / "models.yaml", "alpha_generator"
+                    )
+                )
+                if args.llm == "configured"
+                else None
+            ),
+        )
+        output = args.receipt if args.receipt.is_absolute() else Path.cwd() / args.receipt
+        output.parent.mkdir(parents=True, exist_ok=True)
+        output.write_text(
+            json.dumps(alpha_receipt, indent=2, sort_keys=True, default=str), encoding="utf-8"
+        )
+        print(
+            json.dumps(
+                {
+                    "receipt": str(output),
+                    "receipt_sha256": alpha_receipt["receipt_sha256"],
+                    "decision": alpha_receipt["gatekeeper"],
+                },
+                indent=2,
+                sort_keys=True,
+                default=str,
+            )
+        )
+        return 0
+    if args.command == "alpha-run-graph":
+        as_of = parse_as_of(args.as_of)
+        snapshot_path = args.snapshot if args.snapshot.is_absolute() else root / args.snapshot
+        ledger_path = args.ledger if args.ledger.is_absolute() else root / args.ledger
+        ledger = DuckDBEvidenceLedger(ledger_path)
+        try:
+            observations = ledger.observations_for_run(args.market_run_id)
+        finally:
+            ledger.close()
+        graph_receipt = run_graph_pipeline(
+            GraphSnapshot.from_json(snapshot_path),
+            observations,
+            shock_entity_id=args.shock,
+            as_of_time=as_of,
+            source_run_ids=[args.market_run_id],
+            expression=args.expression,
+            run_id=args.run_id,
+            llm=(
+                create_llm(
+                    load_model_config(root / "config" / "models.yaml", "alpha_generator")
+                )
+                if args.llm == "configured"
+                else None
+            ),
+        )
+        output = args.receipt if args.receipt.is_absolute() else root / args.receipt
+        output.parent.mkdir(parents=True, exist_ok=True)
+        output.write_text(
+            json.dumps(graph_receipt, indent=2, sort_keys=True, default=str), encoding="utf-8"
+        )
+        print(
+            json.dumps(
+                {"receipt": str(output), "receipt_sha256": graph_receipt["receipt_sha256"]},
+                indent=2,
+                sort_keys=True,
+            )
+        )
+        return 0
     if args.command == "scenario":
         as_of = parse_as_of(args.as_of)
         graph = SupplyChainGraph.from_json(args.edges)
         scenario_result = graph.scenario(args.shock, args.severity, as_of)
         print(json.dumps(scenario_result.model_dump(mode="json"), indent=2, sort_keys=True))
+        return 0
+    if args.command == "visualize-candidate-graph":
+        candidate_path = (
+            args.candidate_graph
+            if args.candidate_graph.is_absolute()
+            else root / args.candidate_graph
+        )
+        output_path = args.output if args.output.is_absolute() else root / args.output
+        render_receipt = render_candidate_graph_html(
+            candidate_graph=CandidateEvidenceGraph.model_validate(
+                json.loads(candidate_path.read_text(encoding="utf-8"))
+            ),
+            output_path=output_path,
+        )
+        print(json.dumps(render_receipt.model_dump(mode="json"), indent=2, sort_keys=True))
         return 0
     if args.command == "ripple-score":
         result = RippleRiskScorer.from_json(args.snapshot).score(
@@ -184,7 +317,6 @@ def main(argv: Sequence[str] | None = None) -> int:
         )
         print(json.dumps(result.model_dump(mode="json"), indent=2, sort_keys=True))
         return 0
-    root = Path.cwd()
     if args.command == "discover-candidate-graph":
         ledger_path = args.ledger if args.ledger.is_absolute() else root / args.ledger
         output_path = args.output if args.output.is_absolute() else root / args.output

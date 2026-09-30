@@ -35,7 +35,9 @@ class OpenWorldRelationshipExtractor:
                 "statement may use competitive_substitution. A generic partnership without "
                 "a named commercial activity may use strategic_collaboration, never "
                 "manufacturing_dependency. Do not infer unstated customers, suppliers, "
-                "competitors, or relationship weights. Every quote must be exact."
+                "competitors, or relationship weights. Every quote must be exact. "
+                "A URL or document title is locator metadata, never evidence; for "
+                "discovery summaries, quote only the supplied summary text."
             ),
             user=(
                 f"Anchor companies and aliases: {self._anchor_names}\n"
@@ -56,6 +58,11 @@ class OpenWorldRelationshipExtractor:
                     "passage_text": passage.text,
                     "source_url": passage.source_url,
                     "available_at": available_at,
+                    "source_tier": passage.source_tier or "unknown",
+                    "source_kind": passage.source_kind or "unknown",
+                    "source_adapter": passage.source_adapter or "unknown",
+                    "observation_id": passage.observation_id,
+                    "evidence_basis": passage.evidence_basis,
                 }
             )
             for item in raw_relationships

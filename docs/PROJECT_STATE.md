@@ -2,146 +2,103 @@
 
 ## Current milestone
 
-Evidence-first source layer and bounded living-graph foundation.
+Manual evidence-to-graph-to-alpha research path integrated (2026-09-30). This is
+a working software path, not evidence of a profitable alpha or a complete
+semiconductor relationship graph.
 
-## Verified capabilities
+## What works now
 
-- The codebase defines durable research contracts and rejects observations that become available after a requested as-of time.
-- A frozen CSV provider supports deterministic, offline backtest fixtures.
-- The initial backtest creates equal-weight long/short paper positions, accounts for turnover costs, and reports rank IC, net returns, drawdown, and turnover.
-- The scenario engine propagates a severity shock over effective-dated supply-chain edges and returns source-backed explanation paths.
-- A reviewed semiconductor entity registry resolves CIKs, aliases, and whether
-  an entity is tradeable. It now contains a 10-company core, including ASML and
-  Applied Materials with configured SEC and official-IR source entries.
-- The first immutable SEC-backed graph snapshot contains reviewed TSM-to-NVIDIA
-  and TSM-to-AMD manufacturing dependencies. `RippleRiskScorer` replays it
-  with evidence paths and rejects a tampered snapshot.
-- Every future source can emit the same immutable `EvidenceObservation` envelope,
-  with typed text, filing-fact, market-bar, or event-signal payloads. A local
-  DuckDB ledger records observations, source-catalog entries, and run receipts
-  append-only with idempotency protection.
-- SEC multi-form, official investor-relations, official earnings, discovery, and
-  Alpha Vantage daily-OHLCV adapters all emit that same observation envelope.
-  Their normal test runs use frozen fixtures and need neither network nor keys.
-- The bounded `collect-initial-sources` command now runs the initial
-  semiconductor source matrix end-to-end into the ignored local DuckDB ledger:
-  SEC filings and 8-K/6-K earnings exhibits for US/SEC filers, ten official
-  investor-relations/newsroom entries plus bounded same-site release links,
-  Tavily discovery results, and Alpha Vantage daily bars for eight tradeable
-  entities. It records a receipt for every attempted adapter call rather than
-  hiding failures.
-- A real source smoke run confirmed live SEC, Tavily, and Alpha Vantage paths;
-  the tracked research receipt documents the source-specific outcomes and known
-  official-newsroom access failures rather than implying uniform coverage.
-- The Extraction Agent now accepts common text observations, rather than only
-  SEC-specific requests. It produces the same constrained relationship drafts
-  after source collection has preserved the original evidence.
-- The Graph Adjudicator resolves registered aliases, clusters source evidence,
-  validates model output, and applies bounded reliability/freshness-weighted
-  changes before the write-once publisher creates a new graph snapshot. One weak
-  discovery source cannot add a graph edge.
-- `EvidenceIntakeService` invokes only explicitly registered source adapters and
-  writes a completed or failed collection receipt. `NightlyGraphConsolidator`
-  reads ledger observations at a declared as-of time and routes them through the
-  adjudicator to a write-once snapshot path.
-- The first durable A2A workflow is live: an Extraction command produces a
-  provenance-validated Graph Adjudicator review message, which returns an
-  immutable-snapshot receipt to the Orchestrator. Duplicate deliveries are
-  rejected through message idempotency keys.
-- Historical scenario replay now selects only a graph snapshot available at the
-  requested event time, rejects future-dated event evidence, and writes a
-  non-overwritable scenario-run receipt. A typed graph-view export provides
-  node risk severity and edge state for the future React/Cytoscape UI.
-- A bounded live A2A trial successfully ran Luna for both Extraction and Graph
-  Adjudication on current public NVIDIA and AMD 10-K passages. Its scratch
-  snapshots are ignored local artifacts; no unreviewed output was promoted.
-- Controlled post-discovery page retrieval now fetches actual readable content
-  from reviewed official hosts, retains exact relationship-ranked passages, and
-  passes them to Luna rather than treating titles and URLs as evidence. A live
-  NVIDIA Newsroom trial produced an ignored `Hynix -> NVDA` graph-edge proposal
-  through Extraction and Graph Adjudication; it was not promoted to the tracked
-  reviewed graph.
-- Beginner-friendly explanations are tracked under `docs/reference/` for both laptops.
-- A local NetworkX-based HTML visualizer renders every registry entity, approved
-  directed edge, relationship type, strength, confidence, and evidence link.
-  It can render either a tracked reviewed snapshot or an ignored local trial.
-- A bounded `build-graph-from-evidence` command now joins selected official
-  evidence to the real Luna Extraction and Graph Adjudication A2A workflow. The
-  first 10-company live build added GlobalFoundries-to-AMD and Micron-to-NVIDIA
-  dependencies while retaining unproven nodes as isolated; see the dated
-  research report for results and rejected candidates.
-- The evidence selector now ranks explicit competition, customer, equipment,
-  and collaboration language in addition to supply relationships. A separate
-  one-hop candidate-evidence graph may show a newly named company next to a
-  core semiconductor anchor without recursively expanding the domain or
-  changing the reviewed scenario graph. The static HTML view now exposes every
-  stored numeric edge state, source quote, and review receipt on click.
+- SEC, official investor-relations/earnings, Tavily discovery, and Alpha Vantage
+  daily-bar adapters write typed, time-stamped observations to an append-only
+  local DuckDB ledger. Ordinary tests use frozen fixtures and need no keys.
+- Extraction and Graph Adjudication communicate through typed A2A messages.
+  Reviewed graph snapshots are immutable JSON. The initial tracked snapshot
+  contains two TSM manufacturing dependencies; local trials can contain more.
+- Candidate discovery can examine **all text source tiers**, including discovery
+  summaries, without pretending they are all equally reliable. It retains
+  source provenance and can display first-hop entities outside the ten-company
+  core. Numeric market bars remain numeric observations, not relationship text.
+- Relationship types that do not imply a supply shock, such as competition or
+  collaboration, can be displayed without being propagated by the deterministic
+  ripple scorer. A candidate edge is not automatically a reviewed graph edge.
+- The Alpha Generator is a standalone typed agent. It uses the injected model
+  boundary (configured Luna or offline fake), validates formulas against a
+  restricted feature DSL, and records rejected model outputs.
+- Graph ripple scores can become dated factor rows with graph-snapshot and
+  market-bar provenance. The Backtester Agent evaluates candidate and baseline
+  returns with costs; a chronological holdout is created when enough dates
+  exist. The deterministic Gatekeeper can reject, request review, or accept.
+  Only an accepted candidate can produce paper target weights. There is no
+  broker or live-order path.
+- `alpha-run` runs the manual generator-to-paper research path from CSVs.
+  `alpha-run-graph` starts from a reviewed graph snapshot and local market-bar
+  observations. Both write reproducibility receipts. Candidate discovery has
+  its own JSON and HTML visualizer, separate from the reviewed-graph view.
 
-## Next slices
+## Latest actual runs
 
-1. Connect one-hop candidate discovery to a bounded manual evidence run, then
-   add relationship-specific adjudication rules for competitor, customer, and
-   collaboration candidates before any promotion to a reviewed snapshot.
-2. Add an incremental evidence watermark so graph workflows process only new or
-   changed observations, while keeping a full replay option for research.
-3. Add snapshot-diff and event-timeline endpoints, then implement the first
-   React/Cytoscape scenario explorer.
-4. Build the ripple-to-factor bridge and use historical scenario-run receipts
-   as versioned inputs to an honest backtest.
-5. Add a small scheduler/CLI wrapper around the bounded intake and nightly
-   consolidation services; it must remain manual-started in development.
-6. Add reviewed official RSS/feed or documented-download fallbacks for the
-   remaining Micron, GlobalFoundries, and UMC newsroom access failures; do not
-   evade site access controls.
-7. Add persistent source watermarks so repeated collection selects only new
-   filings, releases, and bars rather than relying solely on ledger idempotency.
-8. Extend evidence conflict/outlier clustering, then replay static and evolving
-   snapshots across documented semiconductor events without future leakage.
-9. Only after those baselines exist, resume feature/alpha-generation work.
+- A bounded Luna candidate-discovery run on eight official text observations
+  produced seven **unapproved candidate** relationships around the ten anchors.
+  A broader official-plus-discovery selection produced one candidate. Different
+  selected evidence yields different coverage; neither run proves a fully
+  connected ten-company graph. Details: `docs/research/2026-09-30-candidate-live-trials.md`.
+- A configured Luna `alpha-run` proposed `Rank(score)` against hand-authored
+  demo CSVs. The run completed and Gatekeeper rejected it because it had only
+  three backtest periods and no out-of-sample evidence. This validates the
+  software flow, not the formula's financial value. Details:
+  `docs/research/2026-09-30-alpha-generator-live-trial.md`.
+- An offline `alpha-run-graph` used the reviewed TSM graph and retained Alpha
+  Vantage bars. Six graph-factor rows were scored. It was rejected for too
+  little post-snapshot price history; no return or paper weights were invented.
+  Local receipt: `reports/offline-graph-alpha-receipt-v2.json` (ignored by Git).
 
-## Known risks
+## Next slices, in order
 
-- No production market-data provider is configured; demo CSVs are strictly illustrative.
-- The scenario graph is deterministic at scoring time. Its graph-maintenance
-  policy is new and has not yet been evaluated over a historical event replay.
-- Backtest statistics are minimal initial diagnostics and do not establish investability.
-- Local Codex plugin configuration does not synchronize; install it on both laptops. The tracked `AGENTS.md` carries the repository rules.
-- React dependencies cannot be verified on this laptop until Node.js LTS is installed.
-- Cloud LLM calls require a locally configured provider key; normal tests use a fake model.
-- A complete real-source run additionally needs local Alpha Vantage and Tavily
-  keys. The SEC, official-IR, and public SEC-earnings paths require no key.
-- The tracked $2/day budget is a policy default; its persistent enforcement ledger is the next agent-runtime safety slice.
-- Filing passage selection is keyword-based and is deliberately conservative. It now excludes
-  hidden Inline-XBRL metadata, but it still needs broader section-aware ranking before large-scale
-  research collection.
+1. Collect and preserve more pair-specific source content for all ten core
+   companies, including competitor, customer, equipment, and foundry links.
+   Measure evidence coverage by pair and relationship type. Do not invent
+   edges merely to connect isolated nodes.
+2. Build a date-indexed, immutable **historical** graph series and acquire
+   adequate licensed/usable price history after each graph's availability.
+   The current real-source ledger is too short for an honest validation run.
+3. Upgrade the alpha evaluator from one chronological holdout to rolling
+   walk-forward tests with purging/embargo where labels overlap, exposure
+   reporting, trial accounting, and false-discovery controls. Compare graph
+   factors against simple price and static-graph baselines.
+4. Add graph snapshot diffs and event-timeline inspection, then wire the
+   review/alpha receipts into the React UI.
+5. Implement incremental source watermarks, source-access fallbacks, Monitor,
+   and the bounded LangGraph Orchestrator. Keep development runs manual and
+   paper-only until those components are verified.
+
+## Known risks and boundaries
+
+- Allowing every text tier into **candidate discovery** improves recall, not
+  factual certainty. Discovery summaries may omit context; provenance and
+  weaker reliability remain visible. Graph publication still requires the
+  adjudication policy. The locally viewed candidate graph is not a trading
+  input.
+- There are too few retained post-snapshot daily bars to backtest the real
+  graph-derived factor. The demo CSVs are hand-authored fixtures.
+- The Gatekeeper is a conservative first software policy, not a complete
+  statistical proof. The current holdout is not full walk-forward validation.
+- Free Alpha Vantage data is development-only and not a production-grade
+  point-in-time dataset. Source licenses and website access controls matter.
+- Keys and private ledgers remain only in ignored local files. All durable
+  project decisions, code, tests, and handoffs belong in Git so both laptops
+  stay synchronized. Both laptops must configure provider secrets locally.
 
 ## Latest verification
 
 ```powershell
-.venv\Scripts\python.exe -m pytest -q -p no:cacheprovider --basetemp .test-tmp
-.venv\Scripts\ruff.exe check .
-.venv\Scripts\mypy.exe src
-.venv\Scripts\python.exe -m alpha_workbench ripple-score --snapshot data/graph_snapshots/semiconductor-sec-reviewed-v1.json --shock TSM --severity 0.9 --as-of 2026-05-01T00:00:00+00:00
-.venv\Scripts\python.exe -m alpha_workbench collect-initial-sources --preview-limit 32
-.venv\Scripts\python.exe -m alpha_workbench visualize-graph --snapshot data/graph_snapshots/semiconductor-sec-reviewed-v1.json --output reports/semiconductor-graph.html
-.venv\Scripts\python.exe -m alpha_workbench build-graph-from-evidence --help
+.venv\Scripts\python.exe -m pytest -q
+.venv\Scripts\python.exe -m ruff check .
+.venv\Scripts\python.exe -m mypy src
+.venv\Scripts\python.exe -m alpha_workbench alpha-run --help
+.venv\Scripts\python.exe -m alpha_workbench alpha-run-graph --help
 .venv\Scripts\python.exe -m alpha_workbench discover-candidate-graph --help
-python -m alpha_workbench backtest --prices data/demo_prices.csv --factors data/demo_factors.csv --as-of 2024-01-05T21:00:00+00:00
-python -m alpha_workbench scenario --edges data/semiconductor_edges.json --shock TSM --severity 0.9 --as-of 2024-01-15T00:00:00+00:00
-scripts\setup.ps1
-scripts\run-demos.ps1
 ```
 
-The current suite has 85 passing tests with the command above. Replayable
-synthetic demo output is recorded in `docs/reference/demo-results.md`. A live
-NVIDIA 10-K and AMD 10-K produced draft, provenance-validated manufacturing
-dependencies on TSM; a TSMC 20-F correctly produced no proposal when no
-approved counterparty was named. The original two dependencies are in
-`data/graph_snapshots/semiconductor-sec-reviewed-v1.json`; new snapshots are
-write-once and use the bounded Graph Adjudicator policy. See
-`docs/research/2026-09-01-live-sec-extraction-trial.md` and
-`docs/decisions/0003-agent-managed-living-graph.md`. The full-page evidence and
-Luna graph trial is recorded in
-`docs/research/2026-09-02-web-content-and-luna-graph-trial.md`.
-The first 10-company live build is recorded in
-`docs/research/2026-09-03-semiconductor-core-graph-build.md`.
+At this checkpoint the suite has 117 passing tests; lint and type checks pass.
+See `docs/plans/2026-09-30-alpha-pipeline-acceleration.md` and
+`docs/reference/alpha-research-workflow.md` for the development map and usage.

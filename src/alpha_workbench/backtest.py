@@ -8,7 +8,7 @@ from datetime import datetime
 import numpy as np
 import pandas as pd
 
-from .data import assert_available_as_of
+from .data import PointInTimeViolation, assert_available_as_of
 from .models import BacktestReport
 
 
@@ -68,17 +68,31 @@ def backtest_long_short(
         raise ValueError(f"factors are missing columns: {sorted(missing)}")
     assert_available_as_of(price_frame, as_of_time)
     assert_available_as_of(factor_frame, as_of_time)
+    as_of_date = pd.Timestamp(as_of_time).tz_convert("UTC").tz_localize(None).normalize()
+    future_signals = pd.to_datetime(factor_frame["date"]) > as_of_date
+    if future_signals.any():
+        raise ValueError("factor observations cannot have signal dates after as_of_time")
 
     price_frame["next_close"] = price_frame.groupby("ticker", sort=False)["close"].shift(-1)
     price_frame["forward_return"] = price_frame["next_close"] / price_frame["close"] - 1
     joined = factor_frame.merge(
-        price_frame[["date", "ticker", "forward_return"]],
+        price_frame[["date", "ticker", "forward_return", "available_at"]].rename(
+            columns={"available_at": "price_available_at"}
+        ),
         on=["date", "ticker"],
         how="inner",
         validate="one_to_one",
-    ).dropna(subset=["forward_return"])
+    ).rename(columns={"available_at": "factor_available_at"}).dropna(
+        subset=["forward_return"]
+    )
     if joined.empty:
         raise ValueError("no factor observations have a next-period return")
+    factor_available = pd.to_datetime(joined["factor_available_at"], utc=True)
+    price_available = pd.to_datetime(joined["price_available_at"], utc=True)
+    if (factor_available > price_available).any():
+        raise PointInTimeViolation(
+            "factor observations must be available before the same-date execution price"
+        )
 
     rows: list[dict[str, float | int | pd.Timestamp]] = []
     prior_weights: pd.Series = pd.Series(dtype=float)

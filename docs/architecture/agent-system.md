@@ -10,14 +10,18 @@ workflow; the optional Research Agent is built last.
 
 | Role | Responsibility | Current state |
 | --- | --- | --- |
-| Orchestrator | Bounded, LLM-assisted routing and run accounting | Skeleton |
-| Extraction | Convert sourced inputs into versioned feature observations | Skeleton |
-| Alpha Generator | Propose typed factor DSL expressions | Skeleton |
-| Backtester | Evaluate candidates with point-in-time data | Existing baseline + skeleton |
-| Gatekeeper | Apply acceptance/rejection policy | Skeleton |
-| Portfolio Optimiser | Create paper-only targets | Skeleton |
+| Orchestrator | Bounded, LLM-assisted routing and run accounting | Skeleton; manual CLI pipelines exist, LangGraph routing pending |
+| Extraction | Convert sourced inputs into versioned feature observations | Multi-source evidence intake and relationship extraction implemented; broader feature extraction pending |
+| Alpha Generator | Propose typed factor DSL expressions | Bounded model-backed generator and restricted DSL implemented |
+| Backtester | Evaluate candidates with point-in-time data | Standalone agent, costs and baseline implemented; rolling walk-forward and full trial accounting pending |
+| Gatekeeper | Apply acceptance/rejection policy | Deterministic first policy implemented; statistical controls pending |
+| Portfolio Optimiser | Create paper-only targets | Bounded paper target construction implemented; richer exposure controls pending |
 | Monitor | Identify decay and request review | Skeleton |
 | Research (optional) | Propose new data-source research | Skeleton |
+
+This table describes the 2026-09-30 checkpoint. The manual `alpha-run` and
+`alpha-run-graph` commands call standalone agents in a fixed sequence; they do
+**not** yet implement the agentic LangGraph Orchestrator or a scheduled run.
 
 The semiconductor graph and eventual GNN are Extraction Agent tools, not extra
 agents. Evidence collection and evidence validation are internal Extraction

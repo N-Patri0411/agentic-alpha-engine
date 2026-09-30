@@ -10,10 +10,13 @@ This folder is the beginner-friendly, Git-tracked learning companion for the pro
 4. [Semiconductor domain mapping plan](../research/semiconductor-domain-mapping-plan.md) explains the next research milestone.
 5. [Source setup and first live evidence run](source-setup-and-live-run.md) explains the live source adapters and their output.
 6. [Graph format and visualizer](graph-format-and-visualizer.md) explains the JSON graph and how to open its local HTML view.
+7. [Alpha research workflow](alpha-research-workflow.md) explains the new manual generator, backtest, gate, and paper-only path.
 
 ## Ground rules
 
 - The software is for research and paper portfolios, not investment advice or real-money trading.
 - A backtest is evidence about the past, not a prediction guarantee.
-- The current demo data is synthetic and exists only to verify code behavior.
+- The hand-authored demo CSVs exist only to verify code behavior; the new
+  reviewed-graph/market-bar path is real-source but presently has too little
+  post-snapshot history to validate an alpha.
 - When a concept becomes more advanced, link it here and state whether it is implemented, planned, or only a research idea.

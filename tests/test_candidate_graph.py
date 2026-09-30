@@ -87,3 +87,43 @@ def test_open_world_extractor_keeps_external_names_and_exact_quote() -> None:
 
     assert result.relationships[0].source_entity_name == "Microsoft"
     assert result.relationships[0].target_entity_name == "NVIDIA"
+
+
+def test_known_entities_stay_connected_for_competition_and_collaboration() -> None:
+    registry = EntityRegistry.from_json(REGISTRY)
+    graph = CandidateGraphBuilder(registry).build(
+        [
+            _relationship("NVIDIA", "AMD", "competitive_substitution"),
+            _relationship("TSMC", "ASML", "strategic_collaboration"),
+        ]
+    )
+    assert {(edge.source_entity_id, edge.target_entity_id) for edge in graph.edges} == {
+        ("NVDA", "AMD"),
+        ("TSM", "ASML"),
+    }
+
+
+def test_open_world_extractor_preserves_source_provenance() -> None:
+    extractor = OpenWorldRelationshipExtractor(
+        FakeLLMClient({"relationships": [{
+            "source_entity_name": "Microsoft",
+            "target_entity_name": "NVIDIA",
+            "relationship_type": "customer_concentration",
+            "evidence_quote": "Microsoft deploys NVIDIA GPUs in its cloud infrastructure",
+            "rationale": "summary names a deployment relationship",
+            "suggested_confidence": 0.4,
+        }]}),
+        {"NVDA": ("NVIDIA",)},
+    )
+    passage = DocumentPassage(
+        snapshot_sha256="a" * 64, source_url="https://example.test/result",
+        start_offset=0, end_offset=len(PASSAGE), text=PASSAGE,
+        matching_keywords=["candidate_discovery"], source_tier="discovery",
+        source_kind="web_discovery", source_adapter="fixture", observation_id="obs-1",
+        evidence_basis="discovery_summary",
+    )
+    relationship = extractor.extract(passage, available_at=NOW.isoformat()).relationships[0]
+    assert relationship.source_tier == "discovery"
+    assert relationship.source_kind == "web_discovery"
+    assert relationship.observation_id == "obs-1"
+    assert relationship.evidence_basis == "discovery_summary"

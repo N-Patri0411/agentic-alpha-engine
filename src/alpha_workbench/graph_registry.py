@@ -189,8 +189,16 @@ class RippleRiskScorer:
         return cls(GraphSnapshot.from_json(path))
 
     def score(
-        self, *, shock_entity_id: str, severity: float, as_of_time: datetime, max_hops: int = 3
+        self,
+        *,
+        shock_entity_id: str,
+        severity: float,
+        as_of_time: datetime,
+        max_hops: int = 3,
+        relationship_types: set[str] | None = None,
     ) -> ScenarioResult:
+        """Score a point-in-time shock, optionally restricting causal edge types."""
+
         graph = SupplyChainGraph(
             [
                 SupplyChainEdge(
@@ -214,6 +222,7 @@ class RippleRiskScorer:
                     effective_to=edge.effective_to,
                 )
                 for edge in self._snapshot.edges
+                if relationship_types is None or edge.relationship_type in relationship_types
             ]
         )
         return graph.scenario(shock_entity_id, severity, as_of_time, max_hops=max_hops)
