@@ -2,9 +2,9 @@
 
 ## Current milestone
 
-Manual evidence-to-graph-to-alpha research path integrated (2026-09-30). This is
-a working software path, not evidence of a profitable alpha or a complete
-semiconductor relationship graph.
+Historical-validation and bounded-automation foundation integrated (2026-09-30).
+This is working research software, not evidence of a profitable alpha or a
+complete semiconductor relationship graph.
 
 ## What works now
 
@@ -34,6 +34,19 @@ semiconductor relationship graph.
   `alpha-run-graph` starts from a reviewed graph snapshot and local market-bar
   observations. Both write reproducibility receipts. Candidate discovery has
   its own JSON and HTML visualizer, separate from the reviewed-graph view.
+- The historical panel can join dated price bars to the latest **eligible**
+  immutable graph snapshot at each bar. It can compare an evolving graph with a
+  deliberately static graph, retains snapshot/bar timing in its receipt, and
+  will not retrofit a later graph into an earlier row.
+- The Monitor deterministically measures realised rolling IC/returns, drift,
+  freshness, and library crowding. It emits a typed Gatekeeper review event for
+  decay or inadequate data; it cannot retire a signal, alter the library, or
+  write graph state.
+- The bounded Orchestrator has explicit action transitions, step/LLM/wall-clock
+  budgets, retry and loop limits, idempotency-keyed DuckDB events, pause/resume,
+  and optional LangGraph wiring around injected handlers. It has no shell,
+  arbitrary-web, graph-publication, or trading capability. It is not scheduled
+  or connected to a production run yet.
 
 ## Latest actual runs
 
@@ -58,18 +71,18 @@ semiconductor relationship graph.
    companies, including competitor, customer, equipment, and foundry links.
    Measure evidence coverage by pair and relationship type. Do not invent
    edges merely to connect isolated nodes.
-2. Build a date-indexed, immutable **historical** graph series and acquire
-   adequate licensed/usable price history after each graph's availability.
+2. Populate the historical panel with a date-indexed, immutable **real** graph
+   series and adequate licensed/usable prices after each graph's availability.
    The current real-source ledger is too short for an honest validation run.
 3. Upgrade the alpha evaluator from one chronological holdout to rolling
    walk-forward tests with purging/embargo where labels overlap, exposure
    reporting, trial accounting, and false-discovery controls. Compare graph
    factors against simple price and static-graph baselines.
 4. Add graph snapshot diffs and event-timeline inspection, then wire the
-   review/alpha receipts into the React UI.
-5. Implement incremental source watermarks, source-access fallbacks, Monitor,
-   and the bounded LangGraph Orchestrator. Keep development runs manual and
-   paper-only until those components are verified.
+   historical-panel, review, and alpha receipts into the React UI.
+5. Implement incremental source watermarks, source-access fallbacks, and a
+   manual orchestration integration. Add scheduling only after a replayable
+   production-like run has been accepted. Keep everything paper-only.
 
 ## Known risks and boundaries
 
@@ -99,6 +112,7 @@ semiconductor relationship graph.
 .venv\Scripts\python.exe -m alpha_workbench discover-candidate-graph --help
 ```
 
-At this checkpoint the suite has 117 passing tests; lint and type checks pass.
-See `docs/plans/2026-09-30-alpha-pipeline-acceleration.md` and
+At this checkpoint the suite has 134 passing tests; lint and type checks pass.
+See `docs/plans/2026-09-30-alpha-pipeline-acceleration.md`,
+`docs/plans/2026-09-30-historical-validation-and-automation.md`, and
 `docs/reference/alpha-research-workflow.md` for the development map and usage.
