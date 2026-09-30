@@ -1,0 +1,138 @@
+name: agentic-alpha-studio
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-alpha}
+      POSTGRES_USER: ${POSTGRES_USER:-alpha}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-alpha-local-only}
+    ports:
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./infra/migrations:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  migrations:
+    image: postgres:16-alpine
+    environment:
+      PGHOST: postgres
+      PGDATABASE: ${POSTGRES_DB:-alpha}
+      PGUSER: ${POSTGRES_USER:-alpha}
+      PGPASSWORD: ${POSTGRES_PASSWORD:-alpha-local-only}
+    volumes:
+      - ./infra/migrations:/infra-migrations:ro
+    command:
+      - sh
+      - -ec
+      - |
+        for migration in /infra-migrations/*.sql; do
+          [ -f "$${migration}" ] || continue
+          psql --set ON_ERROR_STOP=1 --file "$${migration}"
+        done
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--appendonly", "yes", "--appendfsync", "everysec"]
+    ports:
+      - "127.0.0.1:${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
+  api:
+    build:
+      context: .
+      dockerfile: infra/Dockerfile
+    command: ["uvicorn", "alpha_workbench.server.app:app", "--host", "0.0.0.0", "--port", "8000"]
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-alpha}:${POSTGRES_PASSWORD:-alpha-local-only}@postgres:5432/${POSTGRES_DB:-alpha}
+      REDIS_URL: redis://redis:6379/0
+      ALPHA_LOCAL_ONLY: "1"
+    ports:
+      - "127.0.0.1:${API_PORT:-8000}:8000"
+    depends_on:
+      migrations:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/readiness')"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  worker:
+    build:
+      context: .
+      dockerfile: infra/Dockerfile
+    command: ["python", "-m", "alpha_workbench.jobs"]
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-alpha}:${POSTGRES_PASSWORD:-alpha-local-only}@postgres:5432/${POSTGRES_DB:-alpha}
+      REDIS_URL: redis://redis:6379/0
+      ALPHA_LOCAL_ONLY: "1"
+    depends_on:
+      migrations:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import os,psycopg,redis; psycopg.connect(os.environ['DATABASE_URL']).execute('SELECT 1'); assert redis.Redis.from_url(os.environ['REDIS_URL']).ping()"
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  web:
+    image: node:22-alpine
+    working_dir: /app/web
+    command: ["sh", "-c", "npm ci && npm run dev -- --host 0.0.0.0"]
+    environment:
+      VITE_API_BASE_URL: http://api:8000
+    ports:
+      - "127.0.0.1:${WEB_PORT:-5173}:5173"
+    volumes:
+      - ./web:/app/web
+      - web-node-modules:/app/web/node_modules
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--spider", "http://127.0.0.1:5173"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+    restart: unless-stopped
+
+  lean-worker:
+    image: quantconnect/lean:latest
+    profiles: ["lean"]
+    environment:
+      ALPHA_LOCAL_ONLY: "1"
+    volumes:
+      - ./artifacts/lean:/lean/artifacts
+
+volumes:
+  postgres-data:
+  redis-data:
+  web-node-modules:

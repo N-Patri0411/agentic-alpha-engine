@@ -1,4 +1,4 @@
-# Agentic Alpha Research Workbench
+# Agentic Alpha Studio
 
 This repository is the shared, durable source of truth for the project. Work must be reproducible from tracked code, documentation, and fixtures; do not rely on local agent memory, caches, or uncommitted notes.
 
@@ -20,13 +20,13 @@ Apply these checks to every non-trivial task:
 - If synchronization fails, resolve it before beginning another slice.
 - Never commit credentials, licensed/private data, local caches, or machine-specific paths.
 
-## Research Integrity
+## Strategy Integrity
 
-- Every time-sensitive observation needs `observed_at`, `available_at`, and an explicit research `as_of_time`.
+- Every time-sensitive observation needs `observed_at`, `available_at`, and an explicit strategy `as_of_time`.
 - A backtest must reject data that was unavailable at its as-of time.
 - Tests establish software correctness, not economic validity. Report out-of-sample results honestly, including negative results.
 - LLMs may propose typed hypotheses; they do not issue trading instructions.
-- The application is paper-research software, not investment advice or a live trading system.
+- The application is a production-quality local strategy studio, but the current execution boundary is paper deployment and reproducible LEAN export. It is not investment advice and has no live-broker path.
 
 ## Definition of Done
 

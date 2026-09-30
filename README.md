@@ -1,30 +1,52 @@
-# Agentic Alpha Research Workbench
+# Agentic Alpha Studio
 
-An open-source, local-first workbench for reproducible quantitative research and paper portfolios. The project is intentionally evidence-first: a factor is a testable hypothesis with versioned inputs and an auditable report, not a trading instruction.
+An open-source, local-first application for turning a market domain into a reproducible strategy workflow:
 
-## What works now
+`Domain → Universe → Graph → Alpha → Backtest → Paper / LEAN Export → Monitor`
 
-- Typed research records for datasets, features, hypotheses, research runs, backtests, signal health, and scenarios.
-- Frozen CSV market-data provider with point-in-time availability checks.
-- Cost-aware, gross-normalized long/short factor backtest and JSON report.
-- Effective-dated, sourced semiconductor supply-chain shock propagation.
-- Point-in-time historical-event replay with immutable scenario-run receipts
-  and graph-view export data for the upcoming React viewer.
-- Fixture-based tests that run without network access.
+The product is being built for production use, with durable jobs, versioned inputs, and observable automation. The current safety boundary is paper deployment and reproducible LEAN export; it does not place live orders.
 
-## Quick start
+## Wave 1 foundation
 
-Python 3.11 is required. Create a virtual environment, install the development dependencies, then run:
+- Immutable product contracts for domain workspaces, universes, instruments, providers, strategies, runs, packages, and readiness.
+- PostgreSQL repositories and ordered migrations for durable versioned records.
+- Redis-backed, restart-safe jobs with idempotent dispatch, progress events, cancellation, and durable receipts.
+- A local credential-vault boundary that keeps secrets out of application records and logs.
+- FastAPI endpoints for workspace creation and job progress.
+- A responsive React application shell using React Router, TanStack Query, Tailwind, and Radix, with a clearly labeled offline demo fallback.
+- The earlier evidence, graph, alpha, backtest, Gatekeeper, Monitor, and bounded orchestration modules remain available while they are migrated into the production workflow in later waves.
 
-For the simplest Windows setup, double-click `setup.cmd`. It creates the local `.venv`, installs dependencies, and runs the full verification suite. Then double-click `run-demos.cmd` to run the offline examples.
+## One-command local stack
+
+Install and start Docker Desktop, then double-click `start-studio.cmd`, or run:
 
 ```powershell
-python -m alpha_workbench backtest --prices data/demo_prices.csv --factors data/demo_factors.csv --as-of 2024-01-05T21:00:00+00:00
-python -m alpha_workbench scenario --edges data/semiconductor_edges.json --shock TSM --severity 0.9 --as-of 2024-01-15T00:00:00+00:00
-pytest
+.\scripts\start-studio.ps1 -Build
 ```
 
-If `python` is not available on a new Windows machine, install Python 3.11 first, then repeat the commands above from an activated virtual environment.
+This starts PostgreSQL, Redis, the API, worker, and web application on localhost. Open `http://127.0.0.1:5173`. The LEAN worker is only a disabled future profile in Wave 1.
+
+## Developer setup
+
+Python 3.11+ and Node.js 22+ are supported. For the simplest Windows Python setup, double-click `setup.cmd`. Then install the web dependencies once:
+
+```powershell
+cd web
+npm ci
+```
+
+Run the verification suite from the repository root:
+
+```powershell
+.venv\Scripts\python.exe -m pytest -q
+.venv\Scripts\python.exe -m ruff check .
+.venv\Scripts\python.exe -m mypy src
+cd web
+npm run build
+npm test
+```
+
+Normal tests use in-memory repositories and fixtures. Set `TEST_POSTGRES_DSN` only when you want to run the optional live PostgreSQL repository test.
 
 ## Workflow
 
@@ -32,6 +54,6 @@ Before every shared work session, update `main` and read [PROJECT_STATE.md](docs
 
 ## Safety and scope
 
-This is research and paper-portfolio software, not investment advice and not a live-trading system. Free market-data adapters are developer conveniences, not a production-data claim. The application never stores credentials in the repository.
+This software does not provide investment advice. Wave 1 has no live-broker or live-order route. Free market-data adapters remain development conveniences rather than production-data claims. Credentials belong in the local OS vault or ignored `.env`, never Git.
 
 

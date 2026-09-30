@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "agentic-alpha-workbench"
 version = "0.1.0"
-description = "Evidence-first quantitative research and paper-portfolio workbench"
+description = "Local-first domain-to-strategy studio with reproducible validation and LEAN export"
 readme = "README.md"
 requires-python = ">=3.11"
 license = { text = "Apache-2.0" }
@@ -13,9 +13,12 @@ dependencies = [
   "duckdb>=1.1,<2",
   "fastapi>=0.115,<1",
   "httpx>=0.28,<1",
+  "keyring>=25,<26",
   "pandas>=2.2,<3",
+  "psycopg[binary]>=3.2,<4",
   "pydantic>=2.9,<3",
   "python-dotenv>=1.0,<2",
+  "redis>=5,<6",
   "PyYAML>=6.0,<7",
   "uvicorn>=0.30,<1",
 ]
