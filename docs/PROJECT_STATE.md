@@ -2,13 +2,15 @@
 
 ## Current milestone
 
-Wave 1 — Product Foundation implemented and verified (2026-09-30).
+Wave 2 — Provider-aware Domain and Universe onboarding implemented and verified
+(2026-09-30), building on the Wave 1 product foundation.
 
 Agentic Alpha Studio now has the shared contracts, durable storage model, job
 runtime, local service stack, API boundary, and production application shell
-required by every later product wave. Domain discovery, graph v2, LEAN
-compilation, and deployment automation have deliberately not been started in
-this milestone.
+required by every later product wave. Wave 2 adds bounded provider contracts,
+instrument discovery and mapping, historical coverage scoring, current/PIT
+selection, company replacement, and durable universe locking. Graph v2, LEAN
+compilation, and deployment automation have not started.
 
 ## What works now
 
@@ -38,6 +40,13 @@ this milestone.
 - The earlier evidence ingestion, living-graph experiments, alpha generation,
   deterministic backtesting, Gatekeeper, Monitor, and bounded Orchestrator
   remain intact and tested. They are not yet wired into the new product pages.
+- Provider configuration checks report local credential presence only; they do
+  not probe connectivity or account readiness. Current providers do not claim
+  point-in-time discovery, so PIT requests receive an actionable API rejection.
+- Discovery yield is separate from measured historical data coverage. Provider
+  exceptions produce safe warnings while retaining other providers' results.
+  Universe reads use a typed persistence interface, and workspace/universe lock
+  writes are atomic in PostgreSQL and rollback-safe in memory.
 
 ## Verified commands
 
@@ -51,25 +60,18 @@ npm run build
 npm test
 ```
 
-Current results: 157 Python tests passed, 1 live-PostgreSQL integration test
+Current results: 181 Python tests passed, 1 live-PostgreSQL integration test
 skipped without `TEST_POSTGRES_DSN`; Ruff and strict mypy passed; the web
-production build passed; 5 Vitest/Testing Library tests passed, including the
-axe accessibility check and create-workspace/bootstrap flow.
+production build passed; 9 Vitest/Testing Library tests passed, including the
+axe accessibility check and domain/universe onboarding flow.
 
 ## Next slices, in order
 
 1. Run the Compose stack on a machine with Docker Desktop and execute the
-   optional live PostgreSQL repository test. This is the remaining Wave 1
-   environment acceptance check.
-2. Begin Wave 2 with provider-neutral instrument discovery, identifier mapping,
-   historical bars, fundamentals, corporate actions, calendars, FX, and
-   evidence-document capability reports.
-3. Build Domain and Universe agents against those provider contracts, including
-   current versus point-in-time selection, liquidity/coverage scoring, ten-name
-   recommendations, user replacement, and locking.
-4. Complete the onboarding wizard only after the Wave 2 backend contracts are
-   stable. Do not begin graph v2, LEAN compilation, or production deployment in
-   parallel with unfinished provider/universe foundations.
+   optional live PostgreSQL repository test.
+2. Extend provider breadth for fundamentals, corporate actions, calendars, FX,
+   evidence documents, and a source that guarantees historical discovery.
+3. Connect locked universes to graph v2 and continue into alpha/backtest flows.
 
 ## Known limitations and boundaries
 
@@ -78,6 +80,8 @@ axe accessibility check and create-workspace/bootstrap flow.
   are covered by static tests but the complete container stack was not launched.
 - The PostgreSQL round-trip test is opt-in and was skipped locally. Normal tests
   use the contract-equivalent in-memory repositories.
+- The live provider credentials are not configured in this test environment;
+  provider connectivity was intentionally not probed.
 - Most workflow pages beyond Domain are polished Wave 1 shells with visibly
   labeled demo data. They do not yet claim production graph, alpha, LEAN, or
   deployment behavior.

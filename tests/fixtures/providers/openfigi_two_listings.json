@@ -1,0 +1,22 @@
+[
+  {
+    "data": [
+      {
+        "figi": "BBG000B9XRY4",
+        "name": "ACME CORP",
+        "ticker": "ACME",
+        "exchCode": "US",
+        "securityType": "Common Stock",
+        "securityType2": "Common Stock"
+      },
+      {
+        "figi": "BBG000B9XRZ3",
+        "name": "ACME CORP",
+        "ticker": "ACME",
+        "exchCode": "CA",
+        "securityType": "Common Stock",
+        "securityType2": "Common Stock"
+      }
+    ]
+  }
+]

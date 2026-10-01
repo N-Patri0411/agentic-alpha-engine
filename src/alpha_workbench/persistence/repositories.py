@@ -43,6 +43,14 @@ class DBConnection(Protocol):
 T = TypeVar("T", bound=ContractBase)
 
 
+class UniverseRepository(Protocol):
+    """Typed persistence boundary for immutable universe specifications."""
+
+    def put_universe(self, universe: UniverseSpec) -> UniverseSpec: ...
+
+    def get_universe(self, universe_id: str, version: int = 1) -> UniverseSpec: ...
+
+
 class ProductRepository(Protocol):
     """Persistence boundary used by the API and workspace job handlers."""
 
@@ -53,9 +61,19 @@ class ProductRepository(Protocol):
     def latest_workspace(self, workspace_id: str) -> DomainWorkspace: ...
 
 
+class DomainLockRepository(ProductRepository, UniverseRepository, Protocol):
+    """Repository able to persist the workspace/universe lock as one unit."""
+
+    def put_workspace_with_universe(
+        self, workspace: DomainWorkspace, universe: UniverseSpec
+    ) -> tuple[DomainWorkspace, UniverseSpec]: ...
+
+
 def _identity(record: ContractBase) -> tuple[str, int]:
     """Get the stable identifier/version pair from a versioned contract."""
 
+    if isinstance(record, UniverseSpec):
+        return record.universe_id, record.version
     for field in (
         "workspace_id",
         "universe_id",
@@ -89,6 +107,32 @@ class InMemoryVersionedRepository(Generic[T]):
             return cast(T, existing)
         self._records[key] = record
         return record
+
+    def put_universe(self, universe: UniverseSpec) -> UniverseSpec:
+        return cast(UniverseSpec, self.put(cast(T, universe)))
+
+    def get_universe(self, universe_id: str, version: int = 1) -> UniverseSpec:
+        return cast(UniverseSpec, self.get(cast(type[T], UniverseSpec), universe_id, version))
+
+    def put_workspace_with_universe(
+        self, workspace: DomainWorkspace, universe: UniverseSpec
+    ) -> tuple[DomainWorkspace, UniverseSpec]:
+        """Validate both immutable writes before publishing either in memory."""
+        workspace_id, workspace_version = _identity(workspace)
+        universe_id, universe_version = _identity(universe)
+        workspace_key = (DomainWorkspace, workspace_id, workspace_version)
+        universe_key = (UniverseSpec, universe_id, universe_version)
+        for key, record in ((workspace_key, workspace), (universe_key, universe)):
+            existing = self._records.get(key)
+            if existing is not None and existing.content_sha256() != record.content_sha256():
+                raise ImmutableVersionError(
+                    f"{type(record).__name__} {key[1]} version {key[2]} is immutable"
+                )
+        self._records[universe_key] = self._records.get(universe_key, universe)
+        self._records[workspace_key] = self._records.get(workspace_key, workspace)
+        return cast(DomainWorkspace, self._records[workspace_key]), cast(
+            UniverseSpec, self._records[universe_key]
+        )
 
     def get(self, record_type: type[T], identifier: str, version: int = 1) -> T:
         record = self._records.get((record_type, identifier, version))
@@ -183,6 +227,49 @@ class PostgresProductRepository:
         )
         self._connection.commit()
         return record
+
+    def put_universe(self, universe: UniverseSpec) -> UniverseSpec:
+        return self.put(universe)
+
+    def get_universe(self, universe_id: str, version: int = 1) -> UniverseSpec:
+        return self.get(UniverseSpec, universe_id, version)
+
+    def put_workspace_with_universe(
+        self, workspace: DomainWorkspace, universe: UniverseSpec
+    ) -> tuple[DomainWorkspace, UniverseSpec]:
+        """Persist both lock records in one database transaction."""
+        try:
+            self._put_without_commit(universe)
+            self._put_without_commit(workspace)
+            self._connection.commit()
+        except Exception:
+            rollback = getattr(self._connection, "rollback", None)
+            if callable(rollback):
+                rollback()
+            raise
+        return workspace, universe
+
+    def _put_without_commit(self, record: ContractBase) -> None:
+        if type(record) not in self._TABLES:
+            raise TypeError(f"unsupported product record: {type(record).__name__}")
+        table, id_column = self._TABLES[type(record)]
+        identifier, schema_version, version, digest, payload = self._row(record)
+        cursor = self._connection.cursor()
+        cursor.execute(
+            f"SELECT content_sha256 FROM {table} WHERE {id_column} = %s AND version = %s",
+            (identifier, version),
+        )
+        existing = cursor.fetchone()
+        if existing is not None:
+            if str(existing[0]) != digest:
+                raise ImmutableVersionError(f"{table} {identifier} version {version} is immutable")
+            return
+        cursor.execute(
+            f"INSERT INTO {table} "
+            f"({id_column}, schema_version, version, content_sha256, payload, created_at) "
+            "VALUES (%s, %s, %s, %s, %s::jsonb, CURRENT_TIMESTAMP)",
+            (identifier, schema_version, version, digest, payload),
+        )
 
     def get(self, record_type: type[T], identifier: str, version: int = 1) -> T:
         if record_type not in self._TABLES:

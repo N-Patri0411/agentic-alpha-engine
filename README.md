@@ -16,6 +16,17 @@ The product is being built for production use, with durable jobs, versioned inpu
 - A responsive React application shell using React Router, TanStack Query, Tailwind, and Radix, with a clearly labeled offline demo fallback.
 - The earlier evidence, graph, alpha, backtest, Gatekeeper, Monitor, and bounded orchestration modules remain available while they are migrated into the production workflow in later waves.
 
+## Wave 2 domain and universe onboarding
+
+- A seven-step UI turns a domain description into a reviewed, locked ten-company universe without requiring terminal use.
+- Provider-neutral contracts cover instrument discovery, identifier mapping, bars, fundamentals, corporate actions, calendars, FX, and evidence documents.
+- EODHD is the current global discovery/history adapter, OpenFIGI provides optional identifier mapping, and Alpha Vantage remains a development-only daily-bars adapter.
+- The deterministic planner scores relevance, liquidity, and measured historical coverage, then applies region and sub-industry diversification.
+- Current selections are timestamped after retrieval. Point-in-time selection is rejected unless a configured discovery provider can genuinely support it.
+- Workspace and universe records are locked atomically and can be reloaded from durable storage after restart.
+
+Copy `.env.example` to the ignored root `.env`. Live domain discovery currently requires `EODHD_API_KEY`; `OPENFIGI_API_KEY` is optional. The provider screen checks only whether credentials are configured—it does not contact the vendor or validate an account.
+
 ## One-command local stack
 
 Install and start Docker Desktop, then double-click `start-studio.cmd`, or run:

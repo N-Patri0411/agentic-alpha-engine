@@ -7,7 +7,34 @@ from pathlib import Path
 import pytest
 
 from alpha_workbench.persistence import PostgresProductRepository
-from alpha_workbench.product import DomainWorkspace
+from alpha_workbench.product import DomainWorkspace, InstrumentRef, UniverseSpec
+
+
+class _RecordingCursor:
+    def __init__(self) -> None:
+        self.executions: list[tuple[str, tuple[object, ...]]] = []
+
+    def execute(self, query: str, params: tuple[object, ...]) -> None:
+        self.executions.append((query, params))
+
+    def fetchone(self) -> None:
+        return None
+
+
+class _RecordingConnection:
+    def __init__(self) -> None:
+        self.recording_cursor = _RecordingCursor()
+        self.commits = 0
+        self.rollbacks = 0
+
+    def cursor(self) -> _RecordingCursor:
+        return self.recording_cursor
+
+    def commit(self) -> None:
+        self.commits += 1
+
+    def rollback(self) -> None:
+        self.rollbacks += 1
 
 
 def test_product_migration_is_idempotent_and_isolated() -> None:
@@ -27,6 +54,63 @@ def test_product_migration_is_idempotent_and_isolated() -> None:
     assert "CREATE TABLE IF NOT EXISTS jobs" in jobs_text
     assert "CREATE TABLE IF NOT EXISTS job_events" in jobs_text
     assert "product_" not in jobs_text
+
+
+def test_postgres_universe_insert_uses_universe_id_as_repository_key() -> None:
+    connection = _RecordingConnection()
+    repository = PostgresProductRepository(connection)
+    universe = UniverseSpec(
+        universe_id="u-key",
+        workspace_id="w-owner",
+        domain="semiconductors",
+        instruments=(
+            InstrumentRef(
+                instrument_id="FIGI:AMD",
+                symbol="AMD",
+                exchange="XNAS",
+                currency="USD",
+            ),
+        ),
+        selection_time=datetime(2024, 1, 1, tzinfo=UTC),
+        selection_mode="current",
+        selection_method="fixture",
+    )
+
+    repository.put(universe)
+
+    assert connection.recording_cursor.executions[0][1] == ("u-key", 1)
+    assert connection.recording_cursor.executions[1][1][0] == "u-key"
+    assert "product_universe_versions" in connection.recording_cursor.executions[1][0]
+
+
+def test_postgres_domain_lock_uses_one_transaction_for_both_records() -> None:
+    connection = _RecordingConnection()
+    repository = PostgresProductRepository(connection)
+    workspace = DomainWorkspace(
+        workspace_id="w-lock",
+        name="Lock test",
+        domain="semiconductors",
+        universe_id="u-lock",
+    )
+    universe = UniverseSpec(
+        universe_id="u-lock",
+        workspace_id="w-lock",
+        domain="semiconductors",
+        instruments=(
+            InstrumentRef(
+                instrument_id="FIGI:AMD", symbol="AMD", exchange="XNAS", currency="USD"
+            ),
+        ),
+        selection_time=datetime(2024, 1, 1, tzinfo=UTC),
+        selection_mode="current",
+        selection_method="fixture",
+    )
+
+    repository.put_workspace_with_universe(workspace, universe)
+
+    assert len(connection.recording_cursor.executions) == 4
+    assert connection.commits == 1
+    assert connection.rollbacks == 0
 
 
 @pytest.mark.skipif(

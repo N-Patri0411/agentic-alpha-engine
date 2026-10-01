@@ -1,10 +1,11 @@
-import { useEffect, useState, type FormEvent, type ReactNode } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useEffect, useState, type ReactNode } from "react";
+import { useQuery } from "@tanstack/react-query";
 import * as Dialog from "@radix-ui/react-dialog";
 import { Activity, ArrowRight, Atom, BarChart3, Boxes, BrainCircuit, BriefcaseBusiness, Check, ChevronRight, CircleGauge, Database, FlaskConical, Home as HomeIcon, Menu, Moon, Network, Plus, Radio, Rocket, Settings, Sun, X } from "lucide-react";
-import { NavLink, Navigate, Route, Routes, useNavigate } from "react-router-dom";
-import { api, type Job, type WorkspaceCreate } from "./api";
+import { NavLink, Navigate, Route, Routes } from "react-router-dom";
+import { api, type Job } from "./api";
 import { demoEntities, demoJobs, demoSignals, demoWorkspace } from "./demo";
+import { DomainOnboarding } from "./DomainOnboarding";
 
 type Icon = typeof HomeIcon;
 type NavItem = { to: string; label: string; icon: Icon };
@@ -14,7 +15,7 @@ const workflow: NavItem[] = [
   { to: "/graph", label: "Graph", icon: Network },
   { to: "/alpha", label: "Alpha", icon: BrainCircuit },
   { to: "/backtest", label: "Backtest", icon: FlaskConical },
-  { to: "/paper-export", label: "Paper / LEAN Export", icon: Rocket },
+  { to: "/paper-export", label: "Paper / Code Export", icon: Rocket },
   { to: "/monitor", label: "Monitor", icon: CircleGauge },
 ];
 const flowCopy = ["Define the thesis boundary", "Select point-in-time instruments", "Build cited relationships", "Generate constrained signals", "Test costs and unseen periods", "Run paper or package for LEAN", "Watch drift and freshness"];
@@ -50,7 +51,7 @@ export function App() {
       </div>
     </header><main id="main-content" className="mx-auto max-w-[1440px] px-4 py-8 md:px-8 lg:px-10"><Routes>
       <Route path="/" element={<Home offline={data.offline} activeJobs={activeJobs.length} />} />
-      <Route path="/new-domain" element={<NewDomain offline={data.offline} />} />
+      <Route path="/new-domain" element={<DomainOnboarding offline={data.offline} />} />
       <Route path="/domain" element={<Domain workspaceName={data.workspace.name} demo={data.workspaceDemo} />} />
       <Route path="/universe" element={<Universe />} /><Route path="/graph" element={<Graph />} /><Route path="/alpha" element={<Alpha />} /><Route path="/backtest" element={<Backtest />} /><Route path="/paper-export" element={<PaperExport />} /><Route path="/monitor" element={<Monitor jobs={data.jobs} />} /><Route path="/settings" element={<SettingsPage offline={data.offline} />} /><Route path="*" element={<Navigate to="/" replace />} />
     </Routes></main></div>
@@ -83,13 +84,6 @@ function Home({ offline, activeJobs }: { offline: boolean; activeJobs: number })
   </>;
 }
 
-function NewDomain({ offline }: { offline: boolean }) {
-  const navigate = useNavigate(); const queryClient = useQueryClient(); const [error, setError] = useState<string | null>(null);
-  const mutation = useMutation({ mutationFn: async (input: WorkspaceCreate) => { const workspace = await api.createWorkspace(input); await api.bootstrapWorkspace(workspace.workspace_id); return workspace; }, onSuccess: async () => { await queryClient.invalidateQueries({ queryKey: ["workspaces"] }); await queryClient.invalidateQueries({ queryKey: ["jobs"] }); navigate("/domain"); }, onError: (reason) => setError(reason instanceof Error ? reason.message : "Could not create workspace") });
-  function submit(event: FormEvent<HTMLFormElement>) { event.preventDefault(); setError(null); const values = new FormData(event.currentTarget); const input: WorkspaceCreate = { name: String(values.get("name")), domain: String(values.get("domain")), base_currency: "USD", cadence: "daily", regions: String(values.get("regions")).split(",").map((v) => v.trim()).filter(Boolean), status: "building" }; if (offline) { navigate("/domain"); return; } mutation.mutate(input); }
-  return <><PageHead eyebrow="Domain" title="Create a strategy domain" description="Set the economic boundary. The graph then advances autonomously through universe, evidence, alpha, validation, paper/export, and monitoring." demo={offline} /><form className="card max-w-3xl space-y-5 p-6 sm:p-8" onSubmit={submit}><Field label="Workspace name" name="name" placeholder="Semiconductor Core" /><Field label="Domain thesis" name="domain" placeholder="Global semiconductor supply-chain dependencies" /><Field label="Regions" name="regions" placeholder="US, TW, NL, KR" hint="Comma-separated ISO country codes" />{error && <p role="alert" className="text-sm text-red-400">{error}</p>}<div className="flex flex-col gap-3 border-t border-line pt-5 sm:flex-row sm:items-center sm:justify-between"><p className="text-xs text-muted">{offline ? "Offline: this opens the labeled demo workspace." : "Creates the workspace and starts its bootstrap job."}</p><button className="button-primary" disabled={mutation.isPending}>{mutation.isPending ? "Creating…" : offline ? "Open demo domain" : "Create and start"}<ArrowRight /></button></div></form></>;
-}
-
 function Domain({ workspaceName, demo }: { workspaceName: string; demo: boolean }) { return <><PageHead eyebrow="01 · Domain" title={workspaceName} description="A durable boundary for one production strategy, its evidence, and every reproducible run." demo={demo} action={<Next to="/universe">Continue to Universe</Next>} /><div className="grid gap-4 lg:grid-cols-3"><MetricCard label="Status" value={demo ? "Ready · DEMO" : "Ready"} icon={Check} /><MetricCard label="Cadence" value="Daily · DEMO" icon={Activity} /><MetricCard label="Base currency" value="USD · DEMO" icon={Database} /></div><div className="mt-5 grid gap-4 lg:grid-cols-2"><Panel title="Autonomous objective" label="DEMO"><p className="copy">Map production dependencies, derive bounded graph features, challenge factor candidates, and carry only validated outputs into paper execution.</p></Panel><Panel title="Safeguards" label="DEMO"><ul className="check-list"><li><Check /> Point-in-time inputs enforced</li><li><Check /> Constrained signal expressions</li><li><Check /> Paper-only runtime</li></ul></Panel></div></>; }
 function Universe() { return <><PageHead eyebrow="02 · Universe" title="Point-in-time universe" description="The instruments this strategy may evaluate, selected under an explicit as-of time." action={<Next to="/graph">Build Graph</Next>} /><div className="entity-grid">{demoEntities.map((name, index) => <article className="card flex items-center gap-3 p-4" key={name}><span className="grid size-10 place-items-center rounded-xl bg-violet/10 font-mono text-xs text-violet">{name.slice(0, 2).toUpperCase()}</span><div><strong className="block text-sm">{name}</strong><span className="text-xs text-muted">{index > 7 ? "Equipment" : "Core company"} · DEMO</span></div></article>)}</div></>; }
 function Graph() { return <><PageHead eyebrow="03 · Graph" title="Autonomous evidence graph" description="Agents continuously collect, corroborate, score, and version relationships inside the domain boundary." action={<Next to="/alpha">Generate Alpha</Next>} /><div className="grid gap-4 lg:grid-cols-[1.4fr_0.8fr]"><div className="graph-card" role="img" aria-label="Demo relationship graph connecting NVDA, TSMC, ASML, and AMD"><div className="graph-line line-a" /><div className="graph-line line-b" /><GraphNode className="left-[12%] top-[38%]" name="NVDA" /><GraphNode className="left-[46%] top-[17%]" name="TSMC" /><GraphNode className="right-[10%] top-[47%]" name="ASML" /><GraphNode className="bottom-[10%] left-[42%]" name="AMD" /></div><Panel title="Selected relationship" label="DEMO"><p className="eyebrow">Manufacturing dependency</p><h2 className="mt-3 text-2xl">NVDA → TSMC</h2><div className="mt-6 space-y-4"><Scale label="Confidence" value={91} /><Scale label="Dependency" value={82} /><Scale label="Substitutability" value={24} /></div><p className="mt-6 text-xs leading-5 text-muted">3 corroborating sources · versioned evidence trail · no manual review queue</p></Panel></div></>; }
@@ -105,7 +99,6 @@ function MetricCard({ label, value, icon: Icon }: { label: string; value: string
 function DemoNotice({ compact = false }: { compact?: boolean }) { return <div className={`demo-notice ${compact ? "mt-5" : ""}`}><Atom /><div><strong>Demo fallback</strong><p>The local API is unavailable. Every value shown below is a labeled UI fixture.</p></div></div>; }
 function DemoBadge() { return <span className="demo-badge align-middle">DEMO</span>; }
 function Next({ to, children }: { to: string; children: ReactNode }) { return <NavLink className="button-primary" to={to}>{children}<ArrowRight /></NavLink>; }
-function Field({ label, name, placeholder, hint }: { label: string; name: string; placeholder: string; hint?: string }) { const hintId = `${name}-hint`; return <div><label className="field-label" htmlFor={name}>{label}</label><input id={name} className="field mt-2" name={name} placeholder={placeholder} aria-describedby={hint ? hintId : undefined} required />{hint && <span id={hintId} className="mt-2 block text-xs font-normal text-muted">{hint}</span>}</div>; }
 function Status({ value }: { value: Job["status"] }) { return <span className={`status status-${value}`}>{value}</span>; }
 function Timeline() { return <div className="space-y-4">{[[Network, "Graph snapshot versioned", "10:42 · DEMO"], [BrainCircuit, "Alpha candidate advanced", "09:18 · DEMO"], [Database, "Point-in-time panel refreshed", "Yesterday · DEMO"]].map(([TimelineIcon, title, time]) => { const TIcon = TimelineIcon as Icon; return <div className="flex items-center gap-3" key={String(title)}><span className="grid size-9 place-items-center rounded-xl bg-violet/10 text-violet"><TIcon /></span><div><strong className="block text-sm">{String(title)}</strong><span className="text-xs text-muted">{String(time)}</span></div></div>; })}</div>; }
 function GraphNode({ className, name }: { className: string; name: string }) { return <div className={`absolute z-10 grid size-16 place-items-center rounded-full border border-violet/50 bg-panel font-mono text-xs shadow-[0_0_35px_rgba(139,92,246,.2)] ${className}`}>{name}</div>; }

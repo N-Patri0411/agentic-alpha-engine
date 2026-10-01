@@ -126,6 +126,23 @@ def test_in_memory_repository_is_append_only_and_idempotent() -> None:
     assert [item.version for item in repository.list_versions(DomainWorkspace, "w-1")] == [1, 2]
 
 
+def test_in_memory_universe_is_keyed_by_universe_id() -> None:
+    repository: InMemoryVersionedRepository[UniverseSpec] = InMemoryVersionedRepository()
+    universe = UniverseSpec(
+        universe_id="u-1",
+        workspace_id="w-1",
+        domain="semiconductors",
+        instruments=(instrument("AMD", 1),),
+        selection_time=WHEN,
+        selection_mode="current",
+        selection_method="fixture",
+    )
+
+    repository.put(universe)
+
+    assert repository.get(UniverseSpec, "u-1") == universe
+
+
 def test_strategy_contract_has_executable_shape() -> None:
     strategy = StrategySpec(
         strategy_id="s-1",

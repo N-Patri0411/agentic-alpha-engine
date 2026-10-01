@@ -1,0 +1,20 @@
+[
+  {
+    "Code": "ACME",
+    "Exchange": "US",
+    "Name": "Acme Corporation",
+    "Type": "Common Stock",
+    "Currency": "USD",
+    "Country": "USA",
+    "ISIN": "US0000000001"
+  },
+  {
+    "Code": "ACME",
+    "Exchange": "LSE",
+    "Name": "Acme Corporation",
+    "Type": "Common Stock",
+    "Currency": "GBP",
+    "Country": "UK",
+    "ISIN": "GB0000000002"
+  }
+]

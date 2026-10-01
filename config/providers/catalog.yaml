@@ -1,0 +1,51 @@
+# Secrets are environment variable names only. Never put key values here.
+openfigi:
+  kind: openfigi
+  credentials_env: OPENFIGI_API_KEY
+  requires_credentials: false
+  limitation: "Identifier mapping only; symbol mapping requires an exchange."
+  capability:
+    display_name: OpenFIGI
+    capabilities: [identifier_mapping]
+    supports_point_in_time: false
+    rate_limit_per_minute: 25
+    licensing_note: "Review OpenFIGI terms before redistribution."
+  budget:
+    max_requests_per_minute: 25
+    max_requests_per_run: 1000
+
+eodhd:
+  kind: eodhd
+  credentials_env: EODHD_API_KEY
+  requires_credentials: true
+  limitation: "Fundamentals are current snapshots; calendars and evidence documents are unsupported."
+  capability:
+    display_name: EODHD
+    capabilities: [instrument_discovery, historical_bars, fundamentals, corporate_actions, fx_rates]
+    markets: [global_equities, forex]
+    frequencies: [daily, weekly, monthly]
+    supports_point_in_time: false
+    rate_limit_per_minute: 60
+    licensing_note: "Review plan terms; availability is conservatively set to retrieval time."
+  estimated_cost_per_request: "0"
+  budget:
+    max_requests_per_minute: 60
+    max_requests_per_run: 1000
+    max_estimated_cost: "25"
+
+alpha_vantage_compat:
+  kind: alpha_vantage_compat
+  credentials_env: ALPHAVANTAGE_API_KEY
+  requires_credentials: true
+  limitation: "Legacy development-only daily bars; no point-in-time guarantee."
+  capability:
+    display_name: "Alpha Vantage (compatibility)"
+    capabilities: [historical_bars]
+    markets: [US]
+    frequencies: [daily]
+    supports_point_in_time: false
+    rate_limit_per_minute: 5
+    licensing_note: "See Alpha Vantage plan terms."
+  budget:
+    max_requests_per_minute: 5
+    max_requests_per_run: 100

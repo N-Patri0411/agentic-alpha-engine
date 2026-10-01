@@ -28,6 +28,8 @@ from ..persistence.repositories import (
     RepositoryNotFoundError,
 )
 from ..product import DomainWorkspace
+from ..providers.registry import ProviderRegistry
+from .domain_api import DomainApiDependencies, create_domain_router
 
 
 class WorkspaceCreate(BaseModel):
@@ -60,10 +62,9 @@ class AppDependencies:
     job_repository: JobRepository
     queue: QueueClient
     dispatcher: JobDispatcher
+    provider_registry: ProviderRegistry = field(default_factory=ProviderRegistry)
     worker: JobWorker | None = None
-    readiness_probes: tuple[tuple[str, Callable[[], object]], ...] = field(
-        default_factory=tuple
-    )
+    readiness_probes: tuple[tuple[str, Callable[[], object]], ...] = field(default_factory=tuple)
 
 
 def _workspace_payload(request: WorkspaceCreate) -> dict[str, Any]:
@@ -72,7 +73,9 @@ def _workspace_payload(request: WorkspaceCreate) -> dict[str, Any]:
     return values
 
 
-def make_in_memory_dependencies() -> AppDependencies:
+def make_in_memory_dependencies(
+    provider_registry: ProviderRegistry | None = None,
+) -> AppDependencies:
     workspace_repository: ProductRepository = InMemoryVersionedRepository()
     job_repository = InMemoryJobRepository()
     queue = InMemoryQueue()
@@ -82,6 +85,7 @@ def make_in_memory_dependencies() -> AppDependencies:
         job_repository=job_repository,
         queue=queue,
         dispatcher=dispatcher,
+        provider_registry=provider_registry or _provider_registry_from_environment(),
         readiness_probes=(
             ("workspace_store", lambda: True),
             ("job_dispatch", lambda: True),
@@ -132,6 +136,7 @@ def make_environment_dependencies() -> AppDependencies:
         job_repository=job_repository,
         queue=queue,
         dispatcher=dispatcher,
+        provider_registry=_provider_registry_from_environment(),
         readiness_probes=(("postgres", postgres_ready), ("redis", redis_ready)),
     )
     return dependencies
@@ -140,6 +145,11 @@ def make_environment_dependencies() -> AppDependencies:
 def create_app(dependencies: AppDependencies | None = None) -> FastAPI:
     dependencies = dependencies or make_environment_dependencies()
     app = FastAPI(title="Agentic Alpha Studio", version="0.1.0")
+    app.include_router(
+        create_domain_router(
+            DomainApiDependencies(dependencies.provider_registry, dependencies.workspace_repository)
+        )
+    )
     runs: dict[str, AgentRun] = {}
 
     @app.get("/api/health")
@@ -253,6 +263,15 @@ def create_app(dependencies: AppDependencies | None = None) -> FastAPI:
         return []
 
     return app
+
+
+def _provider_registry_from_environment() -> ProviderRegistry:
+    """Build only adapters with credentials available in the process environment."""
+
+    try:
+        return ProviderRegistry.from_config()
+    except (OSError, ValueError):  # pragma: no cover - packaged config always exists
+        return ProviderRegistry()
 
 
 class StartRunRequest(BaseModel):
