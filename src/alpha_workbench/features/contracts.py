@@ -164,19 +164,25 @@ class FeatureFrameManifest(ContractBase):
     feature_set_digest: str = Field(pattern=r"^[a-fA-F0-9]{64}$")
     feature_definition_digests: dict[str, str]
     as_of_time: datetime
+    effective_time: datetime
+    knowledge_time: datetime
     feature_observations: tuple[FeatureObservation, ...] = ()
     readiness: tuple[FeatureReadiness, ...] = ()
     dataset_versions: dict[str, str] = Field(default_factory=dict)
     graph_snapshot_id: str | None = Field(default=None, min_length=1)
     graph_snapshot_digest: str | None = Field(default=None, pattern=r"^[a-fA-F0-9]{64}$")
 
-    @field_validator("as_of_time")
+    @field_validator("as_of_time", "effective_time", "knowledge_time")
     @classmethod
-    def as_of_is_aware(cls, value: datetime) -> datetime:
+    def cutoff_is_aware(cls, value: datetime) -> datetime:
         return _aware(value)
 
     @model_validator(mode="after")
     def provenance_is_consistent(self) -> FeatureFrameManifest:
+        if self.effective_time > self.as_of_time:
+            raise ValueError("effective_time cannot be after frame as_of_time")
+        if self.knowledge_time > self.as_of_time:
+            raise ValueError("knowledge_time cannot be after frame as_of_time")
         if bool(self.graph_snapshot_id) != bool(self.graph_snapshot_digest):
             raise ValueError("graph snapshot ID and digest must be pinned together")
         for item in self.feature_observations:

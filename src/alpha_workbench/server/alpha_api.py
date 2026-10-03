@@ -89,7 +89,7 @@ def create_alpha_router(dependencies: AlphaApiDependencies) -> APIRouter:
             if workspace.graph_version_id:
                 try:
                     graph = dependencies.graph_repository.get(workspace.graph_version_id)
-                    as_of = graph.as_of_time
+                    as_of = max(graph.as_of_time, graph.published_at)
                 except GraphSnapshotNotFoundError:
                     binding = None
             ready = bool(
@@ -145,7 +145,7 @@ def create_alpha_router(dependencies: AlphaApiDependencies) -> APIRouter:
             request.graph_snapshot_id,
             request.feature_names,
         )
-        as_of = min(graph.as_of_time, graph.published_at)
+        as_of = max(graph.as_of_time, graph.published_at)
         payload = {
             "features": refs,
             "context": request.intent,
@@ -345,7 +345,7 @@ def _pinned_context(
             raise HTTPException(
                 status_code=422, detail=f"feature {name!r} has no workspace binding"
             )
-        as_of = min(graph.as_of_time, graph.published_at)
+        as_of = max(graph.as_of_time, graph.published_at)
         if not binding.ready_for(as_of_time=as_of, graph_snapshot_id=graph.snapshot_id):
             raise HTTPException(
                 status_code=422,

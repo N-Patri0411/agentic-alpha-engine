@@ -21,9 +21,13 @@ from ..agents.alpha_generator import (
 )
 from ..agents.contracts import AgentRun
 from ..features import (
+    FeatureRepository,
+    InMemoryFeatureRepository,
     InMemoryWorkspaceFeatureBindingRepository,
+    PostgresFeatureRepository,
     PostgresWorkspaceFeatureBindingRepository,
 )
+from ..features.refresh import feature_refresh_handler
 from ..graph_pipeline import (
     EmptyGraphInputProvider,
     GraphInputProvider,
@@ -51,6 +55,7 @@ from ..providers.registry import ProviderRegistry
 from ..temporal_graph import InMemoryTemporalGraphRepository, PostgresTemporalGraphRepository
 from .alpha_api import AlphaApiDependencies, create_alpha_router
 from .domain_api import DomainApiDependencies, create_domain_router
+from .feature_api import FeatureApiDependencies, create_feature_router
 from .graph_api import GraphApiDependencies, create_graph_router
 
 
@@ -87,6 +92,7 @@ class AppDependencies:
     graph_repository: TemporalGraphRepository
     graph_input_provider: GraphInputProvider
     feature_bindings: Any = field(default_factory=InMemoryWorkspaceFeatureBindingRepository)
+    feature_repository: FeatureRepository = field(default_factory=InMemoryFeatureRepository)
     alpha_generator: AlphaGeneratorService = field(
         default_factory=lambda: AlphaGeneratorService(
             AlphaGeneratorAgent(FakeLLMClient({"candidates": []})), InMemoryTrialLedger()
@@ -121,6 +127,7 @@ def make_in_memory_dependencies(
         graph_repository=graph_repository,
         graph_input_provider=input_provider,
         feature_bindings=InMemoryWorkspaceFeatureBindingRepository(),
+        feature_repository=InMemoryFeatureRepository(),
         provider_registry=provider_registry or _provider_registry_from_environment(),
         readiness_probes=(
             ("workspace_store", lambda: True),
@@ -133,6 +140,12 @@ def make_in_memory_dependencies(
             "workspace-bootstrap": workspace_bootstrap_handler(workspace_repository),
             "graph-refresh": graph_refresh_handler(
                 workspace_repository, graph_repository, input_provider
+            ),
+            "feature-refresh": feature_refresh_handler(
+                workspace_repository,
+                graph_repository,
+                dependencies.feature_repository,
+                dependencies.feature_bindings,
             ),
         },
     )
@@ -180,6 +193,7 @@ def make_environment_dependencies() -> AppDependencies:
         graph_repository=PostgresTemporalGraphRepository(connection_factory()),
         graph_input_provider=default_graph_input_provider(),
         feature_bindings=PostgresWorkspaceFeatureBindingRepository(connection_factory()),
+        feature_repository=PostgresFeatureRepository(connection_factory()),
         alpha_generator=AlphaGeneratorService(
             AlphaGeneratorAgent(
                 create_llm(load_model_config(Path("config/models.yaml"), "alpha_generator"))
@@ -217,6 +231,15 @@ def create_app(dependencies: AppDependencies | None = None) -> FastAPI:
                 dependencies.feature_bindings,
                 dependencies.graph_repository,
                 dependencies.alpha_generator,
+            )
+        )
+    )
+    app.include_router(
+        create_feature_router(
+            FeatureApiDependencies(
+                dependencies.workspace_repository,
+                dependencies.graph_repository,
+                dependencies.dispatcher,
             )
         )
     )

@@ -5,6 +5,7 @@ import { axe } from "jest-axe";
 import { MemoryRouter } from "react-router-dom";
 import { afterEach, expect, test, vi } from "vitest";
 import { AlphaStudio } from "../src/AlphaStudio";
+import { normalizeFeatureRefreshReceipt, pollFeatureRefreshJob } from "../src/api";
 
 vi.mock("@monaco-editor/react", () => ({ default: ({ value, onChange, options }: { value: string; onChange: (value: string) => void; options: { ariaLabel: string } }) => <textarea aria-label={options.ariaLabel} value={value} onChange={(event) => onChange(event.target.value)} /> }));
 vi.mock("../src/PythonEditor", () => ({ default: ({ value, onChange }: { value: string; onChange: (value: string) => void }) => <textarea aria-label="Python extension source" value={value} onChange={(event) => onChange(event.target.value)} /> }));
@@ -47,6 +48,87 @@ test("feature search and selection keeps unavailable features disabled", async (
   await user.type(screen.getByRole("textbox", { name: "Search features" }), "market");
   expect(screen.getByText("market_return")).toBeInTheDocument();
   expect(screen.queryByText("graph_ripple_risk")).not.toBeInTheDocument();
+});
+
+test("refreshes workspace features, polls the job, and reloads the catalog after success", async () => {
+  let finishRefresh: ((response: Response) => void) | undefined;
+  let refreshed = false;
+  vi.stubGlobal("fetch", vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
+    const path = String(input);
+    if (path.endsWith("/graph/snapshots")) return json([{ snapshot_id: "g-live", as_of_time: "2026-09-30T00:00:00Z" }]);
+    if (path.endsWith("/features")) return json(refreshed ? { features: [...featureCatalog.features, { name: "graph_new", category: "Graph features", description: "New graph feature", available: true, readiness: "ready" }] } : featureCatalog);
+    if (path.endsWith("/feature-refresh") && init?.method === "POST") return new Promise<Response>((resolve) => { finishRefresh = resolve; });
+    if (path.endsWith("/api/jobs/job-7")) return json({ id: "job-7", kind: "feature-refresh", status: "succeeded", progress: 1, message: "Feature manifest saved." });
+    if (path.endsWith("/strategies")) return json([]);
+    if (path.endsWith("/alpha-candidates")) return json(candidates);
+    return json({ detail: "not found" }, 404);
+  }));
+  const user = userEvent.setup(); renderStudio();
+  const refresh = await screen.findByRole("button", { name: "Refresh features" });
+  await user.click(refresh);
+  expect(screen.getByText("Submitting feature refresh…")).toBeInTheDocument();
+  expect(refresh).toBeDisabled();
+  await waitFor(() => expect(finishRefresh).toBeTypeOf("function"));
+  refreshed = true;
+  finishRefresh?.(new Response(JSON.stringify({ id: "job-7", kind: "feature-refresh", status: "queued", progress: 0, message: "Refresh queued." }), { status: 202, headers: { "Content-Type": "application/json" } }));
+  expect(await screen.findByText("Feature refresh succeeded")).toBeInTheDocument();
+  expect(screen.getByText("2 ready · 1 unavailable")).toBeInTheDocument();
+  expect(screen.getByText("Job job-7")).toBeInTheDocument();
+  expect(await screen.findByText("graph_new")).toBeInTheDocument();
+  const post = vi.mocked(fetch).mock.calls.find(([path, init]) => String(path).endsWith("/api/workspaces/w-live/feature-refresh") && init?.method === "POST");
+  expect(post).toBeDefined();
+  expect(JSON.parse(String(post?.[1]?.body)).idempotency_key).toEqual(expect.any(String));
+  expect(vi.mocked(fetch).mock.calls.some(([path]) => String(path).endsWith("/api/jobs/job-7"))).toBe(true);
+});
+
+test("normalizes feature refresh jobs without losing the id or status", () => {
+  expect(normalizeFeatureRefreshReceipt({ job_id: "job-4", status: "running", progress: 0.4, message: "Building" })).toEqual({ id: "job-4", status: "running", progress: 0.4, message: "Building" });
+  expect(normalizeFeatureRefreshReceipt(null)).toEqual({ id: "", status: "queued", progress: 0, message: null });
+});
+
+test("polls through immediate job status updates to a terminal state", async () => {
+  const updates: string[] = [];
+  const statuses: Array<"running" | "succeeded"> = ["running", "succeeded"];
+  const result = await pollFeatureRefreshJob("job-5", (job) => updates.push(job.status), {
+    getJob: async () => ({ id: "job-5", status: statuses.shift(), progress: 1 }),
+    wait: async () => undefined,
+  });
+  expect(updates).toEqual(["running", "succeeded"]);
+  expect(result).toMatchObject({ id: "job-5", status: "succeeded" });
+});
+
+test("shows a feature refresh error returned by the API", async () => {
+  vi.stubGlobal("fetch", vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
+    const path = String(input);
+    if (path.endsWith("/graph/snapshots")) return json([{ snapshot_id: "g-live", as_of_time: "2026-09-30T00:00:00Z" }]);
+    if (path.endsWith("/features")) return json(featureCatalog);
+    if (path.endsWith("/feature-refresh") && init?.method === "POST") return json({ detail: "Feature refresh is temporarily unavailable." }, 503);
+    if (path.endsWith("/strategies")) return json([]);
+    if (path.endsWith("/alpha-candidates")) return json(candidates);
+    return json({ detail: "not found" }, 404);
+  }));
+  const user = userEvent.setup(); renderStudio();
+  await user.click(await screen.findByRole("button", { name: "Refresh features" }));
+  expect(await screen.findByRole("alert")).toHaveTextContent("Feature refresh is temporarily unavailable.");
+});
+
+test("surfaces a failed refresh job without reloading the feature catalog", async () => {
+  let featureReads = 0;
+  vi.stubGlobal("fetch", vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
+    const path = String(input);
+    if (path.endsWith("/graph/snapshots")) return json([{ snapshot_id: "g-live", as_of_time: "2026-09-30T00:00:00Z" }]);
+    if (path.endsWith("/features")) { featureReads += 1; return json(featureCatalog); }
+    if (path.endsWith("/feature-refresh") && init?.method === "POST") return json({ id: "job-fail", status: "queued", progress: 0 }, 202);
+    if (path.endsWith("/api/jobs/job-fail")) return json({ id: "job-fail", status: "failed", progress: 0.6, message: "Graph snapshot could not be read." });
+    if (path.endsWith("/strategies")) return json([]);
+    if (path.endsWith("/alpha-candidates")) return json(candidates);
+    return json({ detail: "not found" }, 404);
+  }));
+  const user = userEvent.setup(); renderStudio();
+  await user.click(await screen.findByRole("button", { name: "Refresh features" }));
+  expect(await screen.findByText("Feature refresh failed")).toBeInTheDocument();
+  expect(await screen.findByRole("alert")).toHaveTextContent("Graph snapshot could not be read.");
+  expect(featureReads).toBe(1);
 });
 
 test("compares candidates, edits DSL, validates, saves and reads version history", async () => {

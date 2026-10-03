@@ -176,6 +176,7 @@ export type AlphaFeature = {
   readiness: string;
   reason: string | null;
 };
+export type FeatureRefreshReceipt = Pick<Job, "id" | "status" | "progress" | "message">;
 export type AlphaCandidate = {
   candidate_id: string;
   name: string;
@@ -205,6 +206,38 @@ export function normalizeAlphaFeatures(value: unknown): AlphaFeature[] {
       reason: typeof item.reason === "string" ? item.reason : typeof item.unavailable_reason === "string" ? item.unavailable_reason : null,
     };
   });
+}
+
+export function normalizeFeatureRefreshReceipt(value: unknown): FeatureRefreshReceipt {
+  const root = asRecord(value);
+  const receipt = asRecord(root.receipt);
+  const source = Object.keys(receipt).length > 0 ? receipt : root;
+  const statuses: Job["status"][] = ["queued", "running", "succeeded", "failed", "cancelled"];
+  const rawStatus = asString(source.status, "queued");
+  return {
+    id: asString(source.id, asString(source.job_id)),
+    status: statuses.includes(rawStatus as Job["status"]) ? rawStatus as Job["status"] : "queued",
+    progress: typeof source.progress === "number" && Number.isFinite(source.progress) ? Math.min(1, Math.max(0, source.progress)) : 0,
+    message: typeof source.message === "string" ? source.message : null,
+  };
+}
+
+export async function pollFeatureRefreshJob(
+  jobId: string,
+  onProgress: (job: FeatureRefreshReceipt) => void,
+  options: { intervalMs?: number; maxAttempts?: number; getJob?: (id: string) => Promise<unknown>; wait?: (milliseconds: number) => Promise<void> } = {},
+): Promise<FeatureRefreshReceipt> {
+  const intervalMs = options.intervalMs ?? 1_000;
+  const maxAttempts = options.maxAttempts ?? 60;
+  const getJob = options.getJob ?? api.job;
+  const wait = options.wait ?? ((milliseconds: number) => new Promise<void>((resolve) => window.setTimeout(resolve, milliseconds)));
+  for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+    if (attempt > 0) await wait(intervalMs);
+    const job = normalizeFeatureRefreshReceipt(await getJob(jobId));
+    onProgress(job);
+    if (job.status === "succeeded" || job.status === "failed" || job.status === "cancelled") return job;
+  }
+  throw new Error(`Feature refresh job ${jobId} did not finish before the polling limit.`);
 }
 
 export function normalizeAlphaCandidates(value: unknown): AlphaCandidate[] {
@@ -389,6 +422,7 @@ export const api = {
   workspaces: () => request<Workspace[]>("/api/workspaces"),
   createWorkspace: (input: WorkspaceCreate) => request<Workspace>("/api/workspaces", { method: "POST", body: JSON.stringify(input) }),
   jobs: () => request<Job[]>("/api/jobs"),
+  job: (jobId: string) => request<Job>(`/api/jobs/${encodeURIComponent(jobId)}`),
   bootstrapWorkspace: (workspaceId: string) => request<Job>("/api/jobs", { method: "POST", body: JSON.stringify({ kind: "workspace-bootstrap", idempotency_key: `workspace-bootstrap:${workspaceId}`, payload: { workspace_id: workspaceId } }) }),
   providerCapabilities: async () => normalizeProviderCapabilities(await request<ProviderCapability[]>("/api/providers/capabilities")),
   checkProviders: async (providerIds: string[]) => normalizeProviderCapabilities(await request<ProviderCapability[]>("/api/providers/check", { method: "POST", body: JSON.stringify({ provider_ids: providerIds }) })),
@@ -404,6 +438,7 @@ export const api = {
   graphSnapshotDiff: async (snapshotId: string, compareTo: string) => normalizeGraphSnapshotDiff(await request<unknown>(`/api/graph-snapshots/${encodeURIComponent(snapshotId)}/diff?compare_to=${encodeURIComponent(compareTo)}`)),
   refreshGraph: (workspaceId: string) => request<Job>(`/api/workspaces/${encodeURIComponent(workspaceId)}/graph-refresh`, { method: "POST", body: JSON.stringify({}) }),
   alphaFeatures: async (workspaceId: string) => normalizeAlphaFeatures(await request<unknown>(`/api/workspaces/${encodeURIComponent(workspaceId)}/features`)),
+  refreshAlphaFeatures: async (workspaceId: string, idempotencyKey: string) => normalizeFeatureRefreshReceipt(await request<unknown>(`/api/workspaces/${encodeURIComponent(workspaceId)}/feature-refresh`, { method: "POST", body: JSON.stringify({ idempotency_key: idempotencyKey }) })),
   generateAlphaCandidates: async (workspaceId: string, input: { intent: string; feature_names: string[]; universe_id: string; graph_snapshot_id: string; portfolio: Record<string, unknown>; risk: Record<string, unknown> }) => normalizeAlphaCandidates(await request<unknown>(`/api/workspaces/${encodeURIComponent(workspaceId)}/alpha-candidates`, { method: "POST", body: JSON.stringify(input) })),
   strategies: async (workspaceId: string) => {
     const result = await request<unknown>(`/api/workspaces/${encodeURIComponent(workspaceId)}/strategies`);

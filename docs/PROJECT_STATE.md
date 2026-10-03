@@ -62,6 +62,12 @@ version routes. LEAN compilation and deployment automation have not started.
   storage; strategy versions are keyed by strategy ID and cannot be overwritten.
   Validation is deterministic contract checking and never claims to run a
   backtest.
+- Workspace feature refresh is submitted through the durable job runner. The
+  worker persists deterministic graph-derived feature definitions, sets,
+  observations, manifests, and versioned readiness bindings against the locked
+  universe and pinned graph. Graph propagation and centrality can become ready
+  from graph data alone; neighbor lag and all market/fundamental/event/language/
+  macro families remain unavailable without their source frames.
 - In-memory API dependencies inject a deterministic fake model client. The
   PostgreSQL runtime builds the configured provider-neutral `alpha_generator`
   role. Provider error details are not returned by the API.
@@ -83,9 +89,9 @@ npm run build
 npm test
 ```
 
-Current results: 232 Python tests passed, 1 live-PostgreSQL integration test
-skipped without `TEST_POSTGRES_DSN`; Ruff and strict mypy passed. The web
-production build passed and 21
+Current results after the feature-refresh follow-up: 238 Python tests passed,
+1 live-PostgreSQL integration test skipped without `TEST_POSTGRES_DSN`; Ruff
+and strict mypy passed. The web production build passed and 21
 Vitest/Testing Library tests passed. The build reports large chunks from the
 existing editor dependencies.
 
@@ -121,9 +127,9 @@ an exhausted experiment is rejected before another model call is made.
 - The PostgreSQL round-trip test is opt-in and was skipped locally. Normal tests
   use the contract-equivalent in-memory repositories.
 - Wave 4 migration additions and PostgreSQL trial-counter concurrency were not
-  exercised against a live database. Feature computation is not yet connected
-  to workspace data ingestion, so new workspace catalog entries correctly stay
-  unavailable until an explicit, trusted feature binding is persisted.
+  exercised against a live database. Workspace refresh is not connected to
+  market or fundamental data ingestion and makes no readiness claim for those
+  feature families.
 - The paid extraction provider path was verified with two bounded Luna calls,
   but that smoke test does not establish broad extraction quality. Docker
   Compose and the migration were not run against live PostgreSQL in this

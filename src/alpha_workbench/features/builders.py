@@ -169,10 +169,20 @@ def build_feature_frame(
     input_frames: dict[FeatureFamily, FeatureInputFrame],
     as_of_time: datetime,
     graph_snapshot: TemporalGraphSnapshot | None = None,
+    knowledge_time: datetime | None = None,
+    effective_time: datetime | None = None,
 ) -> FeatureFrameManifest:
     """Build selected features and explicitly report each unavailable feature."""
     if as_of_time.tzinfo is None or as_of_time.utcoffset() is None:
         raise ValueError("as_of_time must include a timezone offset")
+    effective_knowledge_time = knowledge_time or as_of_time
+    graph_effective_time = effective_time or as_of_time
+    if effective_knowledge_time.tzinfo is None or effective_knowledge_time.utcoffset() is None:
+        raise ValueError("knowledge_time must include a timezone offset")
+    if graph_effective_time.tzinfo is None or graph_effective_time.utcoffset() is None:
+        raise ValueError("effective_time must include a timezone offset")
+    if graph_effective_time > as_of_time:
+        raise ValueError("effective_time cannot be after frame as_of_time")
     definition_map = {f"{item.feature_id}:v{item.version}": item for item in definitions}
     selected: list[FeatureDefinition] = []
     for ref in feature_set.feature_definition_refs:
@@ -229,7 +239,12 @@ def build_feature_frame(
                         "neighbor signal frame frequency does not match feature frequency"
                     )
             family_values = _build_graph_feature(
-                definition, graph_snapshot, as_of_time, graph_frame
+                definition,
+                graph_snapshot,
+                as_of_time,
+                graph_frame,
+                effective_knowledge_time,
+                graph_effective_time,
             )
             values.extend(family_values)
             readiness.append(_ready_or_empty(definition, family_values, as_of_time))
@@ -264,6 +279,8 @@ def build_feature_frame(
             as_of_time.astimezone(UTC).isoformat(),
             feature_set.graph_snapshot_id or "no-graph",
             feature_set.graph_snapshot_digest or "no-graph-digest",
+            effective_knowledge_time.astimezone(UTC).isoformat(),
+            graph_effective_time.astimezone(UTC).isoformat(),
             *feature_set.feature_definition_refs,
             *(f"{key}={value}" for key, value in sorted(feature_set.dataset_versions.items())),
         )
@@ -278,6 +295,8 @@ def build_feature_frame(
             f"{item.feature_id}:v{item.version}": item.content_sha256() for item in selected
         },
         as_of_time=as_of_time,
+        effective_time=graph_effective_time,
+        knowledge_time=effective_knowledge_time,
         feature_observations=tuple(values),
         readiness=tuple(readiness),
         dataset_versions=dict(feature_set.dataset_versions),
@@ -440,10 +459,15 @@ def _build_graph_feature(
     snapshot: TemporalGraphSnapshot,
     as_of_time: datetime,
     signal_frame: FeatureInputFrame | None = None,
+    knowledge_time: datetime | None = None,
+    effective_time: datetime | None = None,
 ) -> list[FeatureObservation]:
+    graph_effective_time = effective_time or as_of_time
     edges = tuple(
         edge
-        for edge in snapshot.visible_edge_states(as_of_time=as_of_time, knowledge_time=as_of_time)
+        for edge in snapshot.visible_edge_states(
+            as_of_time=graph_effective_time, knowledge_time=knowledge_time or as_of_time
+        )
         if edge.lifecycle_status == "active" and edge.strategy_eligible == "eligible"
     )
     nodes = {node.node_id for node in snapshot.nodes if node.kind in {"entity", "instrument"}}
@@ -469,7 +493,7 @@ def _build_graph_feature(
             return []
         latest_signal: dict[str, FeatureInputObservation] = {}
         for item in signal_frame.observations:
-            if item.observed_at < as_of_time and item.available_at <= as_of_time:
+            if item.observed_at < graph_effective_time and item.available_at <= as_of_time:
                 old = latest_signal.get(item.entity_id)
                 if old is None or item.observed_at > old.observed_at:
                     latest_signal[item.entity_id] = item
@@ -494,8 +518,8 @@ def _build_graph_feature(
             feature_id=definition.feature_id,
             feature_name=definition.name,
             entity_id=node,
-            observed_at=as_of_time,
-            available_at=as_of_time,
+            observed_at=graph_effective_time,
+            available_at=max(as_of_time, snapshot.published_at),
             value=scores.get(node, 0.0),
             graph_snapshot_id=snapshot.snapshot_id,
             graph_snapshot_digest=snapshot.content_digest,
