@@ -6,13 +6,24 @@ import os
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
+from pathlib import Path
 from typing import Any, Literal, cast
 from uuid import uuid4
 
 from fastapi import FastAPI, HTTPException, Response, status
 from pydantic import BaseModel, ConfigDict, Field
 
+from ..agents.alpha_generator import (
+    AlphaGeneratorAgent,
+    AlphaGeneratorService,
+    InMemoryTrialLedger,
+    PostgresTrialLedger,
+)
 from ..agents.contracts import AgentRun
+from ..features import (
+    InMemoryWorkspaceFeatureBindingRepository,
+    PostgresWorkspaceFeatureBindingRepository,
+)
 from ..graph_pipeline import (
     EmptyGraphInputProvider,
     GraphInputProvider,
@@ -28,6 +39,7 @@ from ..jobs.health import readiness as evaluate_readiness
 from ..jobs.protocols import JobRepository
 from ..jobs.repository import InMemoryJobRepository, PostgresJobRepository
 from ..jobs.worker import JobWorker
+from ..llm.models import FakeLLMClient, create_llm, load_model_config
 from ..persistence.repositories import (
     InMemoryVersionedRepository,
     PostgresProductRepository,
@@ -37,6 +49,7 @@ from ..persistence.repositories import (
 from ..product import DomainWorkspace
 from ..providers.registry import ProviderRegistry
 from ..temporal_graph import InMemoryTemporalGraphRepository, PostgresTemporalGraphRepository
+from .alpha_api import AlphaApiDependencies, create_alpha_router
 from .domain_api import DomainApiDependencies, create_domain_router
 from .graph_api import GraphApiDependencies, create_graph_router
 
@@ -73,6 +86,12 @@ class AppDependencies:
     dispatcher: JobDispatcher
     graph_repository: TemporalGraphRepository
     graph_input_provider: GraphInputProvider
+    feature_bindings: Any = field(default_factory=InMemoryWorkspaceFeatureBindingRepository)
+    alpha_generator: AlphaGeneratorService = field(
+        default_factory=lambda: AlphaGeneratorService(
+            AlphaGeneratorAgent(FakeLLMClient({"candidates": []})), InMemoryTrialLedger()
+        )
+    )
     provider_registry: ProviderRegistry = field(default_factory=ProviderRegistry)
     worker: JobWorker | None = None
     readiness_probes: tuple[tuple[str, Callable[[], object]], ...] = field(default_factory=tuple)
@@ -101,6 +120,7 @@ def make_in_memory_dependencies(
         dispatcher=dispatcher,
         graph_repository=graph_repository,
         graph_input_provider=input_provider,
+        feature_bindings=InMemoryWorkspaceFeatureBindingRepository(),
         provider_registry=provider_registry or _provider_registry_from_environment(),
         readiness_probes=(
             ("workspace_store", lambda: True),
@@ -159,6 +179,13 @@ def make_environment_dependencies() -> AppDependencies:
         dispatcher=dispatcher,
         graph_repository=PostgresTemporalGraphRepository(connection_factory()),
         graph_input_provider=default_graph_input_provider(),
+        feature_bindings=PostgresWorkspaceFeatureBindingRepository(connection_factory()),
+        alpha_generator=AlphaGeneratorService(
+            AlphaGeneratorAgent(
+                create_llm(load_model_config(Path("config/models.yaml"), "alpha_generator"))
+            ),
+            PostgresTrialLedger(connection_factory),
+        ),
         provider_registry=_provider_registry_from_environment(),
         readiness_probes=(("postgres", postgres_ready), ("redis", redis_ready)),
     )
@@ -180,6 +207,16 @@ def create_app(dependencies: AppDependencies | None = None) -> FastAPI:
                 dependencies.graph_repository,
                 dependencies.graph_input_provider,
                 dependencies.dispatcher,
+            )
+        )
+    )
+    app.include_router(
+        create_alpha_router(
+            AlphaApiDependencies(
+                dependencies.workspace_repository,
+                dependencies.feature_bindings,
+                dependencies.graph_repository,
+                dependencies.alpha_generator,
             )
         )
     )

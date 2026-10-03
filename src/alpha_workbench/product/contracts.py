@@ -51,10 +51,15 @@ class ContractBase(BaseModel):
 
     @property
     def version_key(self) -> str:
-        identifier = getattr(self, "workspace_id", None) or getattr(self, "universe_id", None)
-        identifier = identifier or getattr(self, "strategy_id", None) or getattr(
-            self, "run_id", None
-        )
+        # Several records carry their parent's ID as well as their own. Select
+        # the logical identity explicitly before falling back to workspace ID.
+        identifier: str | None
+        if isinstance(self, UniverseSpec):
+            identifier = self.universe_id
+        elif isinstance(self, StrategySpec):
+            identifier = self.strategy_id
+        else:
+            identifier = getattr(self, "run_id", None) or getattr(self, "workspace_id", None)
         identifier = identifier or getattr(self, "package_id", None)
         if identifier is None:
             raise AttributeError("contract does not expose a versioned identifier")
@@ -153,6 +158,7 @@ class StrategySpec(ContractBase):
     prediction_horizon: str = Field(default="1d", min_length=1)
     signal_expression: str = Field(min_length=1, max_length=10_000)
     feature_names: tuple[str, ...] = Field(min_length=1)
+    feature_version_ids: tuple[str, ...] = ()
     portfolio_config: dict[str, Any] = Field(default_factory=dict)
     risk_config: dict[str, Any] = Field(default_factory=dict)
     execution_config: dict[str, Any] = Field(default_factory=dict)

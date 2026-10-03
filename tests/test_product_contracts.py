@@ -62,6 +62,7 @@ def test_contract_canonical_json_is_deterministic() -> None:
     assert first.canonical_json() == second.canonical_json()
     assert first.content_sha256() == second.content_sha256()
     assert first.version_key == "w-1:v1"
+    assert first.model_copy(update={"universe_id": "u-1"}).version_key == "w-1:v1"
 
     with pytest.raises(ValidationError):
         first.version = 2  # type: ignore[misc]
@@ -154,3 +155,4 @@ def test_strategy_contract_has_executable_shape() -> None:
         created_at=WHEN,
     )
     assert strategy.canonical_json().startswith("{")
+    assert strategy.version_key == "s-1:v1"

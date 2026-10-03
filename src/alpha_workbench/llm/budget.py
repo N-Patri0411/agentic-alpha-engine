@@ -22,6 +22,10 @@ class DailyBudgetLedger:
             raise ValueError("reservation must be positive")
         day = datetime.now(UTC).date().isoformat()
         with sqlite3.connect(self._path) as connection:
+            # Serialize the read-and-reserve section across local processes.
+            # Without an immediate write lock, concurrent callers can both see
+            # the same remaining allowance and oversubscribe the daily cap.
+            connection.execute("BEGIN IMMEDIATE")
             spent = connection.execute(
                 "select coalesce(sum(amount), 0) from llm_reservations where day = ?", [day]
             ).fetchone()[0]

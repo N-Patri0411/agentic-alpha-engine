@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
+from decimal import Decimal, InvalidOperation
 from typing import ClassVar
 
 
@@ -34,7 +35,7 @@ def _render_arg(arg: Expression | float | str) -> str:
     if isinstance(arg, Expression):
         return arg.render()
     if isinstance(arg, float):
-        return f"{arg:g}"
+        return _canonical_number(str(arg))
     return arg
 
 
@@ -110,3 +111,78 @@ def parse_expression(
 ) -> Expression:
     """Parse and validate one expression against the supplied feature names."""
     return _Parser(text, set(feature_names), max_nodes).parse()
+
+
+def _canonical_number(value: str) -> str:
+    try:
+        number = Decimal(value)
+    except InvalidOperation as error:
+        raise DSLValidationError("invalid numeric literal") from error
+    if not number.is_finite():
+        raise DSLValidationError("numeric literals must be finite")
+    normalized = format(number.normalize(), "f")
+    return "0" if normalized in {"-0", ""} else normalized
+
+
+def canonicalize_expression(text: str, feature_names: set[str] | list[str]) -> str:
+    """Return the stable DSL identity used for dedupe and strategy hashing."""
+    return _canonical_render(parse_expression(text, feature_names))
+
+
+def _canonical_render(node: Expression) -> str:
+    if not node.args:
+        try:
+            return _canonical_number(node.name)
+        except DSLValidationError:
+            return node.name
+    args = [
+        _canonical_render(arg) if isinstance(arg, Expression) else str(arg)
+        for arg in node.args
+    ]
+    if node.name in {"Add", "Mul"}:
+        args.sort()
+    return f"{node.name}({','.join(args)})"
+
+
+def validate_typed_expression(
+    expression: Expression,
+    *,
+    supported_axes: dict[str, tuple[str, ...]],
+    frequency: str,
+) -> None:
+    """Validate operator axes and cadence-relative lookbacks deterministically.
+
+    Lookback integers are observations at the strategy cadence (for example,
+    ``Delay(x, 5)`` means five weekly rows for a weekly strategy).
+    """
+    del frequency  # cadence is retained by the signal; windows are observation counts.
+    cross_section_ops = {"Rank", "ZScore"}
+    time_series_ops = {"Delay", "Delta", "Mean", "StdDev", "Correlation"}
+
+    def walk(node: Expression) -> set[str]:
+        used = {node.name} if node.name in supported_axes else set()
+        for arg in node.args:
+            if isinstance(arg, Expression):
+                used.update(walk(arg))
+        if node.name in cross_section_ops | time_series_ops:
+            axis = "cross_section" if node.name in cross_section_ops else "time_series"
+            incompatible = sorted(name for name in used if axis not in supported_axes[name])
+            if incompatible:
+                raise DSLValidationError(
+                    f"{node.name} requires {axis}-compatible features: {', '.join(incompatible)}"
+                )
+        period_index = 2 if node.name == "Correlation" else 1
+        if node.name in {"Delay", "Delta", "Mean", "StdDev", "Correlation"}:
+            period_node = node.args[period_index]
+            try:
+                if isinstance(period_node, Expression):
+                    period_raw = float(period_node.name) if not period_node.args else float("nan")
+                else:
+                    period_raw = float(period_node)
+            except (ValueError, TypeError):
+                period_raw = float("nan")
+            if not period_raw.is_integer() or not 1 <= period_raw <= 252:
+                raise DSLValidationError("lookback must be an integer between 1 and 252")
+        return used
+
+    walk(expression)

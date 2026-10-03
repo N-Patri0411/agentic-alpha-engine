@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { lazy, Suspense, useEffect, useState, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import * as Dialog from "@radix-ui/react-dialog";
 import { Activity, ArrowRight, Atom, BarChart3, Boxes, BrainCircuit, BriefcaseBusiness, Check, ChevronRight, CircleGauge, Database, FlaskConical, Home as HomeIcon, Menu, Moon, Network, Plus, Radio, Rocket, Settings, Sun, X } from "lucide-react";
@@ -6,7 +6,8 @@ import { NavLink, Navigate, Route, Routes } from "react-router-dom";
 import { api, type Job } from "./api";
 import { demoEntities, demoJobs, demoSignals, demoWorkspace } from "./demo";
 import { DomainOnboarding } from "./DomainOnboarding";
-import { GraphPage } from "./GraphPage";
+import { AlphaStudio } from "./AlphaStudio";
+const GraphPage = lazy(() => import("./GraphPage").then((module) => ({ default: module.GraphPage })));
 
 type Icon = typeof HomeIcon;
 type NavItem = { to: string; label: string; icon: Icon };
@@ -55,7 +56,7 @@ export function App() {
       <Route path="/" element={<Home offline={data.offline} activeJobs={activeJobs.length} />} />
       <Route path="/new-domain" element={<DomainOnboarding offline={data.offline} />} />
       <Route path="/domain" element={<Domain workspaceName={data.workspace.name} demo={data.workspaceDemo} />} />
-      <Route path="/universe" element={<Universe />} /><Route path="/graph" element={<GraphPage workspaces={data.workspaces} offline={data.offline} />} /><Route path="/alpha" element={<Alpha />} /><Route path="/backtest" element={<Backtest />} /><Route path="/paper-export" element={<PaperExport />} /><Route path="/monitor" element={<Monitor jobs={data.jobs} />} /><Route path="/settings" element={<SettingsPage offline={data.offline} />} /><Route path="*" element={<Navigate to="/" replace />} />
+      <Route path="/universe" element={<Universe />} /><Route path="/graph" element={<Suspense fallback={<p role="status" className="text-sm text-muted">Loading graph workspace…</p>}><GraphPage workspaces={data.workspaces} offline={data.offline} /></Suspense>} /><Route path="/alpha" element={<AlphaStudio workspace={data.workspace} workspaces={data.workspaces} offline={data.offline || data.workspaceDemo} hashPinnedExtensionsEnabled={import.meta.env.VITE_ALPHA_HASH_PINNED_EXTENSIONS_ENABLED === "true"} />} /><Route path="/backtest" element={<Backtest />} /><Route path="/paper-export" element={<PaperExport />} /><Route path="/monitor" element={<Monitor jobs={data.jobs} />} /><Route path="/settings" element={<SettingsPage offline={data.offline} />} /><Route path="*" element={<Navigate to="/" replace />} />
     </Routes></main></div>
   </div>;
 }

@@ -166,6 +166,69 @@ export type GraphSnapshotDiff = {
   changed: Array<Record<string, unknown>>;
 };
 
+export type AlphaFeature = {
+  name: string;
+  category: string;
+  description: string;
+  available: boolean;
+  frequency: number | string | null;
+  provenance: string[];
+  readiness: string;
+  reason: string | null;
+};
+export type AlphaCandidate = {
+  candidate_id: string;
+  name: string;
+  expression: string;
+  rationale: string;
+  feature_names: string[];
+  status: string;
+};
+export type StrategyVersion = { strategy_id: string; version: number; created_at: string; name: string; expression: string; status: string };
+
+export function normalizeAlphaFeatures(value: unknown): AlphaFeature[] {
+  const root = asRecord(value);
+  const list = Array.isArray(value) ? value : Array.isArray(root.features) ? root.features : Array.isArray(root.items) ? root.items : [];
+  return list.map((raw) => {
+    const item = asRecord(raw);
+    const availableAt = item.available_at;
+    const explicitAvailable = item.available ?? item.is_available;
+    const readiness = asString(item.readiness, asString(item.status, "available"));
+    return {
+      name: asString(item.name, asString(item.feature_id, "unknown_feature")),
+      category: asString(item.category, asString(item.entity_scope, "General")),
+      description: asString(item.description),
+      available: typeof explicitAvailable === "boolean" ? explicitAvailable : !["unavailable", "blocked", "not_ready", "missing", "missing_data"].includes(readiness.toLowerCase()),
+      frequency: typeof item.frequency === "number" || typeof item.frequency === "string" ? item.frequency : typeof item.frequency_rate === "number" ? item.frequency_rate : null,
+      provenance: Array.isArray(item.provenance) ? item.provenance.filter((x): x is string => typeof x === "string") : Array.isArray(item.source_artifact_ids) ? item.source_artifact_ids.filter((x): x is string => typeof x === "string") : typeof availableAt === "string" ? [`Available ${availableAt}`] : [],
+      readiness,
+      reason: typeof item.reason === "string" ? item.reason : typeof item.unavailable_reason === "string" ? item.unavailable_reason : null,
+    };
+  });
+}
+
+export function normalizeAlphaCandidates(value: unknown): AlphaCandidate[] {
+  const root = asRecord(value);
+  const list = Array.isArray(value) ? value : Array.isArray(root.candidates) ? root.candidates : Array.isArray(root.items) ? root.items : [];
+  return list.map((raw, index) => {
+    const item = asRecord(raw);
+    const expression = asString(item.expression, asString(item.dsl));
+    return {
+      candidate_id: asString(item.candidate_id, asString(item.id, `candidate-${index + 1}`)),
+      name: asString(item.name, `Candidate ${index + 1}`),
+      expression,
+      rationale: asString(item.rationale, asString(item.description, "No rationale supplied.")),
+      feature_names: Array.isArray(item.feature_names) ? item.feature_names.filter((x): x is string => typeof x === "string") : [],
+      status: asString(item.status, "proposed"),
+    };
+  }).filter((candidate) => candidate.expression.length > 0);
+}
+
+export function normalizeStrategyVersion(value: unknown): StrategyVersion {
+  const item = asRecord(value);
+  return { strategy_id: asString(item.strategy_id, asString(item.id)), version: asNumber(item.version), created_at: asString(item.created_at), name: asString(item.name, "Untitled strategy"), expression: asString(item.expression), status: asString(item.status, "saved") };
+}
+
 const asRecord = (value: unknown): Record<string, unknown> => (
   value && typeof value === "object" ? value as Record<string, unknown> : {}
 );
@@ -340,4 +403,20 @@ export const api = {
   graphSnapshot: async (snapshotId: string) => normalizeGraphSnapshot(await request<unknown>(`/api/graph-snapshots/${encodeURIComponent(snapshotId)}`)),
   graphSnapshotDiff: async (snapshotId: string, compareTo: string) => normalizeGraphSnapshotDiff(await request<unknown>(`/api/graph-snapshots/${encodeURIComponent(snapshotId)}/diff?compare_to=${encodeURIComponent(compareTo)}`)),
   refreshGraph: (workspaceId: string) => request<Job>(`/api/workspaces/${encodeURIComponent(workspaceId)}/graph-refresh`, { method: "POST", body: JSON.stringify({}) }),
+  alphaFeatures: async (workspaceId: string) => normalizeAlphaFeatures(await request<unknown>(`/api/workspaces/${encodeURIComponent(workspaceId)}/features`)),
+  generateAlphaCandidates: async (workspaceId: string, input: { intent: string; feature_names: string[]; universe_id: string; graph_snapshot_id: string; portfolio: Record<string, unknown>; risk: Record<string, unknown> }) => normalizeAlphaCandidates(await request<unknown>(`/api/workspaces/${encodeURIComponent(workspaceId)}/alpha-candidates`, { method: "POST", body: JSON.stringify(input) })),
+  strategies: async (workspaceId: string) => {
+    const result = await request<unknown>(`/api/workspaces/${encodeURIComponent(workspaceId)}/strategies`);
+    const root = asRecord(result);
+    const items = Array.isArray(result) ? result : Array.isArray(root.strategies) ? root.strategies : [];
+    return items.map(normalizeStrategyVersion);
+  },
+  saveStrategy: async (workspaceId: string, input: Record<string, unknown>) => normalizeStrategyVersion(await request<unknown>(`/api/workspaces/${encodeURIComponent(workspaceId)}/strategies`, { method: "POST", body: JSON.stringify(input) })),
+  strategyVersions: async (strategyId: string) => {
+    const result = await request<unknown>(`/api/strategies/${encodeURIComponent(strategyId)}/versions`);
+    const root = asRecord(result);
+    const items = Array.isArray(result) ? result : Array.isArray(root.versions) ? root.versions : [];
+    return items.map(normalizeStrategyVersion);
+  },
+  validateStrategy: (input: Record<string, unknown>) => request<Record<string, unknown>>("/api/strategies/validate", { method: "POST", body: JSON.stringify(input) }),
 };

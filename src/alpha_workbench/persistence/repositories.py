@@ -74,6 +74,8 @@ def _identity(record: ContractBase) -> tuple[str, int]:
 
     if isinstance(record, UniverseSpec):
         return record.universe_id, record.version
+    if isinstance(record, StrategySpec):
+        return record.strategy_id, record.version
     for field in (
         "workspace_id",
         "universe_id",
@@ -148,6 +150,14 @@ class InMemoryVersionedRepository(Generic[T]):
         ]
         return tuple(sorted((cast(T, item) for item in records), key=lambda item: item.version))
 
+    def list_strategies(self, workspace_id: str) -> tuple[StrategySpec, ...]:
+        records = [
+            cast(StrategySpec, value)
+            for (kind, _, _), value in self._records.items()
+            if kind is StrategySpec and cast(StrategySpec, value).workspace_id == workspace_id
+        ]
+        return tuple(sorted(records, key=lambda item: (item.strategy_id, item.version)))
+
     def list_workspaces(self, *, latest_only: bool = True) -> tuple[DomainWorkspace, ...]:
         """List workspaces in stable ID/version order."""
 
@@ -207,17 +217,14 @@ class PostgresProductRepository:
         identifier, schema_version, version, digest, payload = self._row(record)
         cursor = self._connection.cursor()
         cursor.execute(
-            f"SELECT content_sha256 FROM {table} "
-            f"WHERE {id_column} = %s AND version = %s",
+            f"SELECT content_sha256 FROM {table} WHERE {id_column} = %s AND version = %s",
             (identifier, version),
         )
         existing = cursor.fetchone()
         if existing is not None:
             existing_digest = str(existing[0])
             if existing_digest != digest:
-                raise ImmutableVersionError(
-                    f"{table} {identifier} version {version} is immutable"
-                )
+                raise ImmutableVersionError(f"{table} {identifier} version {version} is immutable")
             return record
         cursor.execute(
             f"INSERT INTO {table} "
@@ -309,6 +316,23 @@ class PostgresProductRepository:
             records.append(TypeAdapter(record_type).validate_python(payload))
         return tuple(records)
 
+    def list_strategies(self, workspace_id: str) -> tuple[StrategySpec, ...]:
+        cursor = self._connection.cursor()
+        cursor.execute(
+            "SELECT payload FROM product_strategy_versions "
+            "WHERE payload->>'workspace_id' = %s ORDER BY strategy_id, version",
+            (workspace_id,),
+        )
+        records = []
+        for row in cursor.fetchall():
+            payload = row[0]
+            if isinstance(payload, str):
+                import json
+
+                payload = json.loads(payload)
+            records.append(TypeAdapter(StrategySpec).validate_python(payload))
+        return tuple(records)
+
     def list_workspaces(self, *, latest_only: bool = True) -> tuple[DomainWorkspace, ...]:
         """List workspaces using deterministic database ordering."""
 
@@ -322,10 +346,7 @@ class PostgresProductRepository:
                 "ORDER BY workspace.workspace_id, workspace.version"
             )
         else:
-            cursor.execute(
-                "SELECT payload FROM product_workspaces "
-                "ORDER BY workspace_id, version"
-            )
+            cursor.execute("SELECT payload FROM product_workspaces ORDER BY workspace_id, version")
         records: list[DomainWorkspace] = []
         for row in cursor.fetchall():
             payload = row[0]

@@ -2,8 +2,8 @@
 
 ## Current milestone
 
-Wave 3 — Evidence-backed temporal graph runtime implemented and locally verified
-(2026-10-02), building on Wave 1 and Wave 2.
+Wave 4 — Alpha feature and strategy backend flow integrated and locally verified
+(2026-10-03), building on Waves 1 through 3.
 
 Agentic Alpha Studio now has the shared contracts, durable storage model, job
 runtime, local service stack, API boundary, and product shell. Wave 2 adds bounded
@@ -11,8 +11,10 @@ provider contracts, instrument discovery and mapping, historical coverage
 scoring, current/PIT selection, company replacement, and durable universe
 locking. Wave 3 adds immutable temporal graph snapshots, graph refresh jobs,
 evidence cutoff enforcement, deterministic relationship policy, REST/UI graph
-projection, and a graph exploration page. LEAN compilation and deployment
-automation have not started.
+projection, and a graph exploration page. Wave 4 adds a workspace feature
+catalog with explicit readiness bindings, bounded alpha generation with
+durable trial accounting, DSL and pin validation, and immutable strategy
+version routes. LEAN compilation and deployment automation have not started.
 
 ## What works now
 
@@ -54,6 +56,20 @@ automation have not started.
   durable job; empty evidence publishes only locked-universe nodes. Extracted
   proposals must pass exact-quote/entity validation, while deterministic policy
   alone controls edge eligibility and weights.
+- Alpha routes validate workspace, locked universe, graph ownership, and
+  point-in-time feature bindings before generation or strategy validation.
+  Workspace bindings and experiment trial counts have append-only PostgreSQL
+  storage; strategy versions are keyed by strategy ID and cannot be overwritten.
+  Validation is deterministic contract checking and never claims to run a
+  backtest.
+- In-memory API dependencies inject a deterministic fake model client. The
+  PostgreSQL runtime builds the configured provider-neutral `alpha_generator`
+  role. Provider error details are not returned by the API.
+- Alpha Studio now exposes the workspace feature browser, guided candidate
+  generation, constrained DSL editing, deterministic validation, immutable
+  strategy history, and side-by-side alternatives. A locally bundled Monaco
+  editor is lazy-loaded only when reviewed hash-pinned Python extensions are
+  explicitly enabled; that capability is off by default.
 
 ## Verified commands
 
@@ -67,11 +83,11 @@ npm run build
 npm test
 ```
 
-Current results: 205 Python tests passed, 1 live-PostgreSQL integration test
-skipped without `TEST_POSTGRES_DSN`; Ruff and strict mypy passed; the web
-production build passed; 14 Vitest/Testing Library tests passed. The graph page
-includes an axe accessibility check. The build reports a large JavaScript chunk
-warning (about 812 kB before gzip).
+Current results: 232 Python tests passed, 1 live-PostgreSQL integration test
+skipped without `TEST_POSTGRES_DSN`; Ruff and strict mypy passed. The web
+production build passed and 21
+Vitest/Testing Library tests passed. The build reports large chunks from the
+existing editor dependencies.
 
 A bounded paid smoke test made exactly two Luna extraction calls over existing
 official ASML/TSMC ledger evidence. Luna produced one valid `ASML → TSM`
@@ -79,11 +95,21 @@ equipment-dependency proposal and one no-proposal result. Exact-quote validation
 passed; deterministic policy kept the single-source edge strategy-ineligible for
 insufficient independent corroboration.
 
+A separate bounded Wave 4 smoke made exactly one paid Luna call after building
+a point-in-time feature manifest from 1,400 locally collected market bars. The
+manifest covered eight semiconductor symbols and pinned `close_return` and
+`volume_change`. Luna returned three formulas; deterministic DSL validation,
+feature-pin checks, deduplication, and the three-trial ceiling all passed. This
+verifies the generation path, not economic value or future performance.
+The local daily-cost reservation is serialized across concurrent callers, and
+an exhausted experiment is rejected before another model call is made.
+
 ## Next slices, in order
 
 1. Run the Compose stack on a machine with Docker Desktop and execute the
    optional live PostgreSQL repository test.
-2. Connect graph snapshots to the Alpha and Backtest product flows.
+2. Connect feature builders to workspace datasets and add historical strategy
+   evaluation from the saved StrategySpec contract.
 3. Extend provider breadth for fundamentals, corporate actions, calendars, FX,
    evidence documents, and a source that guarantees historical discovery.
 
@@ -94,14 +120,19 @@ insufficient independent corroboration.
   are covered by static tests but the complete container stack was not launched.
 - The PostgreSQL round-trip test is opt-in and was skipped locally. Normal tests
   use the contract-equivalent in-memory repositories.
+- Wave 4 migration additions and PostgreSQL trial-counter concurrency were not
+  exercised against a live database. Feature computation is not yet connected
+  to workspace data ingestion, so new workspace catalog entries correctly stay
+  unavailable until an explicit, trusted feature binding is persisted.
 - The paid extraction provider path was verified with two bounded Luna calls,
   but that smoke test does not establish broad extraction quality. Docker
   Compose and the migration were not run against live PostgreSQL in this
   environment.
-- The live provider credentials are not configured in this test environment;
-  provider connectivity was intentionally not probed.
-- Alpha, Backtest, Paper/LEAN Export, and Monitor remain demo/product shells and
-  are not yet connected to the Wave 3 graph runtime.
+- The OpenAI credential was used only for the explicitly authorized, locally
+  budgeted Wave 3 and Wave 4 smoke calls. Other provider connectivity was not
+  probed during this milestone.
+- Backtest, Paper/LEAN Export, and Monitor remain demo/product shells and are
+  not yet connected to saved Wave 4 strategies.
 - Paper deployment and LEAN export are the approved execution boundary. There
   is no live broker integration or live-order path.
 - `.env`, provider keys, private/licensed data, caches, `node_modules`, built
