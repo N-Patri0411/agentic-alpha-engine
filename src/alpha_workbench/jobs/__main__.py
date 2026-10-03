@@ -14,7 +14,9 @@ def main() -> None:
     except ImportError as error:  # pragma: no cover - exercised in container
         raise SystemExit(f"worker dependency missing: {error}") from error
 
+    from ..graph_pipeline import default_graph_input_provider, graph_refresh_handler
     from ..persistence.repositories import PostgresProductRepository
+    from ..temporal_graph import PostgresTemporalGraphRepository
     from .dispatch import JobDispatcher, QueueClient
     from .handlers import workspace_bootstrap_handler
     from .repository import PostgresJobRepository
@@ -29,9 +31,16 @@ def main() -> None:
     queue = cast(QueueClient, redis.Redis.from_url(redis_url))
     dispatcher = JobDispatcher(repository, queue, queue_name=queue_name)
     workspace_repository = PostgresProductRepository(psycopg.connect(database_url))
+    graph_repository = PostgresTemporalGraphRepository(psycopg.connect(database_url))
+    graph_inputs = default_graph_input_provider()
     worker = JobWorker(
         dispatcher,
-        handlers={"workspace-bootstrap": workspace_bootstrap_handler(workspace_repository)},
+        handlers={
+            "workspace-bootstrap": workspace_bootstrap_handler(workspace_repository),
+            "graph-refresh": graph_refresh_handler(
+                workspace_repository, graph_repository, graph_inputs
+            ),
+        },
     )
     worker.recover()
     while True:

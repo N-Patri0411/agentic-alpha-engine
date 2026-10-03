@@ -1,5 +1,11 @@
 """Persistence interfaces for immutable product records."""
 
+from alpha_workbench.temporal_graph import (
+    InMemoryTemporalGraphRepository,
+    PostgresTemporalGraphRepository,
+    TemporalGraphRepository,
+)
+
 from .repositories import (
     ImmutableVersionError,
     InMemoryVersionedRepository,
@@ -14,4 +20,7 @@ __all__ = [
     "PostgresProductRepository",
     "ProductRepository",
     "RepositoryNotFoundError",
+    "InMemoryTemporalGraphRepository",
+    "PostgresTemporalGraphRepository",
+    "TemporalGraphRepository",
 ]

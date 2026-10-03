@@ -13,6 +13,13 @@ from fastapi import FastAPI, HTTPException, Response, status
 from pydantic import BaseModel, ConfigDict, Field
 
 from ..agents.contracts import AgentRun
+from ..graph_pipeline import (
+    EmptyGraphInputProvider,
+    GraphInputProvider,
+    TemporalGraphRepository,
+    default_graph_input_provider,
+    graph_refresh_handler,
+)
 from ..jobs.contracts import JobRequest as RuntimeJobRequest
 from ..jobs.dispatch import InMemoryQueue, JobDispatcher, QueueClient
 from ..jobs.handlers import workspace_bootstrap_handler
@@ -29,7 +36,9 @@ from ..persistence.repositories import (
 )
 from ..product import DomainWorkspace
 from ..providers.registry import ProviderRegistry
+from ..temporal_graph import InMemoryTemporalGraphRepository, PostgresTemporalGraphRepository
 from .domain_api import DomainApiDependencies, create_domain_router
+from .graph_api import GraphApiDependencies, create_graph_router
 
 
 class WorkspaceCreate(BaseModel):
@@ -62,6 +71,8 @@ class AppDependencies:
     job_repository: JobRepository
     queue: QueueClient
     dispatcher: JobDispatcher
+    graph_repository: TemporalGraphRepository
+    graph_input_provider: GraphInputProvider
     provider_registry: ProviderRegistry = field(default_factory=ProviderRegistry)
     worker: JobWorker | None = None
     readiness_probes: tuple[tuple[str, Callable[[], object]], ...] = field(default_factory=tuple)
@@ -75,16 +86,21 @@ def _workspace_payload(request: WorkspaceCreate) -> dict[str, Any]:
 
 def make_in_memory_dependencies(
     provider_registry: ProviderRegistry | None = None,
+    graph_input_provider: GraphInputProvider | None = None,
 ) -> AppDependencies:
     workspace_repository: ProductRepository = InMemoryVersionedRepository()
     job_repository = InMemoryJobRepository()
     queue = InMemoryQueue()
     dispatcher = JobDispatcher(job_repository, queue)
+    graph_repository = InMemoryTemporalGraphRepository()
+    input_provider = graph_input_provider or EmptyGraphInputProvider()
     dependencies = AppDependencies(
         workspace_repository=workspace_repository,
         job_repository=job_repository,
         queue=queue,
         dispatcher=dispatcher,
+        graph_repository=graph_repository,
+        graph_input_provider=input_provider,
         provider_registry=provider_registry or _provider_registry_from_environment(),
         readiness_probes=(
             ("workspace_store", lambda: True),
@@ -93,7 +109,12 @@ def make_in_memory_dependencies(
     )
     dependencies.worker = JobWorker(
         dispatcher,
-        {"workspace-bootstrap": workspace_bootstrap_handler(workspace_repository)},
+        {
+            "workspace-bootstrap": workspace_bootstrap_handler(workspace_repository),
+            "graph-refresh": graph_refresh_handler(
+                workspace_repository, graph_repository, input_provider
+            ),
+        },
     )
     return dependencies
 
@@ -136,6 +157,8 @@ def make_environment_dependencies() -> AppDependencies:
         job_repository=job_repository,
         queue=queue,
         dispatcher=dispatcher,
+        graph_repository=PostgresTemporalGraphRepository(connection_factory()),
+        graph_input_provider=default_graph_input_provider(),
         provider_registry=_provider_registry_from_environment(),
         readiness_probes=(("postgres", postgres_ready), ("redis", redis_ready)),
     )
@@ -148,6 +171,16 @@ def create_app(dependencies: AppDependencies | None = None) -> FastAPI:
     app.include_router(
         create_domain_router(
             DomainApiDependencies(dependencies.provider_registry, dependencies.workspace_repository)
+        )
+    )
+    app.include_router(
+        create_graph_router(
+            GraphApiDependencies(
+                dependencies.workspace_repository,
+                dependencies.graph_repository,
+                dependencies.graph_input_provider,
+                dependencies.dispatcher,
+            )
         )
     )
     runs: dict[str, AgentRun] = {}

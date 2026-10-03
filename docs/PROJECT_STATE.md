@@ -2,15 +2,17 @@
 
 ## Current milestone
 
-Wave 2 — Provider-aware Domain and Universe onboarding implemented and verified
-(2026-09-30), building on the Wave 1 product foundation.
+Wave 3 — Evidence-backed temporal graph runtime implemented and locally verified
+(2026-10-02), building on Wave 1 and Wave 2.
 
 Agentic Alpha Studio now has the shared contracts, durable storage model, job
-runtime, local service stack, API boundary, and production application shell
-required by every later product wave. Wave 2 adds bounded provider contracts,
-instrument discovery and mapping, historical coverage scoring, current/PIT
-selection, company replacement, and durable universe locking. Graph v2, LEAN
-compilation, and deployment automation have not started.
+runtime, local service stack, API boundary, and product shell. Wave 2 adds bounded
+provider contracts, instrument discovery and mapping, historical coverage
+scoring, current/PIT selection, company replacement, and durable universe
+locking. Wave 3 adds immutable temporal graph snapshots, graph refresh jobs,
+evidence cutoff enforcement, deterministic relationship policy, REST/UI graph
+projection, and a graph exploration page. LEAN compilation and deployment
+automation have not started.
 
 ## What works now
 
@@ -47,6 +49,11 @@ compilation, and deployment automation have not started.
   exceptions produce safe warnings while retaining other providers' results.
   Universe reads use a typed persistence interface, and workspace/universe lock
   writes are atomic in PostgreSQL and rollback-safe in memory.
+- Temporal graph snapshots are append-only, bitemporal, and stored in
+  PostgreSQL in the local runtime. Graph refresh is an idempotently submitted
+  durable job; empty evidence publishes only locked-universe nodes. Extracted
+  proposals must pass exact-quote/entity validation, while deterministic policy
+  alone controls edge eligibility and weights.
 
 ## Verified commands
 
@@ -60,18 +67,25 @@ npm run build
 npm test
 ```
 
-Current results: 181 Python tests passed, 1 live-PostgreSQL integration test
+Current results: 205 Python tests passed, 1 live-PostgreSQL integration test
 skipped without `TEST_POSTGRES_DSN`; Ruff and strict mypy passed; the web
-production build passed; 9 Vitest/Testing Library tests passed, including the
-axe accessibility check and domain/universe onboarding flow.
+production build passed; 14 Vitest/Testing Library tests passed. The graph page
+includes an axe accessibility check. The build reports a large JavaScript chunk
+warning (about 812 kB before gzip).
+
+A bounded paid smoke test made exactly two Luna extraction calls over existing
+official ASML/TSMC ledger evidence. Luna produced one valid `ASML → TSM`
+equipment-dependency proposal and one no-proposal result. Exact-quote validation
+passed; deterministic policy kept the single-source edge strategy-ineligible for
+insufficient independent corroboration.
 
 ## Next slices, in order
 
 1. Run the Compose stack on a machine with Docker Desktop and execute the
    optional live PostgreSQL repository test.
-2. Extend provider breadth for fundamentals, corporate actions, calendars, FX,
+2. Connect graph snapshots to the Alpha and Backtest product flows.
+3. Extend provider breadth for fundamentals, corporate actions, calendars, FX,
    evidence documents, and a source that guarantees historical discovery.
-3. Connect locked universes to graph v2 and continue into alpha/backtest flows.
 
 ## Known limitations and boundaries
 
@@ -80,11 +94,14 @@ axe accessibility check and domain/universe onboarding flow.
   are covered by static tests but the complete container stack was not launched.
 - The PostgreSQL round-trip test is opt-in and was skipped locally. Normal tests
   use the contract-equivalent in-memory repositories.
+- The paid extraction provider path was verified with two bounded Luna calls,
+  but that smoke test does not establish broad extraction quality. Docker
+  Compose and the migration were not run against live PostgreSQL in this
+  environment.
 - The live provider credentials are not configured in this test environment;
   provider connectivity was intentionally not probed.
-- Most workflow pages beyond Domain are polished Wave 1 shells with visibly
-  labeled demo data. They do not yet claim production graph, alpha, LEAN, or
-  deployment behavior.
+- Alpha, Backtest, Paper/LEAN Export, and Monitor remain demo/product shells and
+  are not yet connected to the Wave 3 graph runtime.
 - Paper deployment and LEAN export are the approved execution boundary. There
   is no live broker integration or live-order path.
 - `.env`, provider keys, private/licensed data, caches, `node_modules`, built

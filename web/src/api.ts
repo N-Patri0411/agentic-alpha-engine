@@ -105,6 +105,154 @@ export type LockedUniverse = {
 };
 export type LockedPlan = { workspace: Workspace; universe: LockedUniverse };
 
+export type GraphSnapshotSummary = {
+  snapshot_id: string;
+  workspace_id: string;
+  as_of_time: string;
+  created_at: string;
+  tradeable_connected: number;
+  total_tradeable: number;
+  eligible_relationships: number;
+  total_relationships: number;
+  freshness: number;
+};
+export type GraphNode = {
+  node_id: string;
+  node_kind: string;
+  label: string;
+  tradeable: boolean;
+  instrument_id?: string;
+  entity_id?: string;
+  metadata: Record<string, unknown>;
+};
+export type GraphRelationship = {
+  relationship_id: string;
+  source_node_id: string;
+  target_node_id: string;
+  relationship_type: string;
+  direction: string;
+};
+export type GraphRelationshipState = {
+  relationship_id: string;
+  confidence: number;
+  economic_exposure: number;
+  propagation_coefficient: number;
+  freshness: number;
+  strategy_eligible: boolean;
+  lifecycle_status: string;
+  evidence_ids: string[];
+};
+export type GraphCoverage = {
+  tradeable_connected: number;
+  total_tradeable: number;
+  eligible_relationships: number;
+  total_relationships: number;
+  freshness: number;
+};
+export type GraphSnapshot = {
+  snapshot_id: string;
+  workspace_id: string;
+  universe_id: string;
+  as_of_time: string;
+  created_at: string;
+  nodes: GraphNode[];
+  relationships: GraphRelationship[];
+  states: GraphRelationshipState[];
+  coverage: GraphCoverage;
+};
+export type GraphSnapshotDiff = {
+  added: Array<Record<string, unknown>>;
+  removed: Array<Record<string, unknown>>;
+  changed: Array<Record<string, unknown>>;
+};
+
+const asRecord = (value: unknown): Record<string, unknown> => (
+  value && typeof value === "object" ? value as Record<string, unknown> : {}
+);
+const asNumber = (value: unknown): number => typeof value === "number" && Number.isFinite(value) ? value : 0;
+const asString = (value: unknown, fallback = ""): string => typeof value === "string" ? value : fallback;
+
+export function normalizeGraphSnapshotSummary(value: unknown): GraphSnapshotSummary {
+  const summary = asRecord(value);
+  const coverage = asRecord(summary.coverage);
+  return {
+    snapshot_id: asString(summary.snapshot_id),
+    workspace_id: asString(summary.workspace_id),
+    as_of_time: asString(summary.as_of_time),
+    created_at: asString(summary.created_at, asString(summary.as_of_time)),
+    tradeable_connected: asNumber(summary.tradeable_connected ?? coverage.tradeable_connected),
+    total_tradeable: asNumber(summary.total_tradeable ?? coverage.total_tradeable),
+    eligible_relationships: asNumber(summary.eligible_relationships ?? coverage.eligible_relationships),
+    total_relationships: asNumber(summary.total_relationships ?? coverage.total_relationships),
+    freshness: asNumber(summary.freshness ?? coverage.freshness),
+  };
+}
+
+export function normalizeGraphSnapshot(value: unknown): GraphSnapshot {
+  const snapshot = asRecord(value);
+  const coverage = asRecord(snapshot.coverage);
+  const nodes = Array.isArray(snapshot.nodes) ? snapshot.nodes.map((raw): GraphNode => {
+    const node = asRecord(raw);
+    return {
+      node_id: asString(node.node_id),
+      node_kind: asString(node.node_kind, "unknown"),
+      label: asString(node.label, asString(node.node_id, "Unknown node")),
+      tradeable: node.tradeable === true,
+      ...(typeof node.instrument_id === "string" ? { instrument_id: node.instrument_id } : {}),
+      ...(typeof node.entity_id === "string" ? { entity_id: node.entity_id } : {}),
+      metadata: asRecord(node.metadata),
+    };
+  }) : [];
+  const relationships = Array.isArray(snapshot.relationships) ? snapshot.relationships.map((raw): GraphRelationship => {
+    const relation = asRecord(raw);
+    return {
+      relationship_id: asString(relation.relationship_id),
+      source_node_id: asString(relation.source_node_id),
+      target_node_id: asString(relation.target_node_id),
+      relationship_type: asString(relation.relationship_type, "relationship"),
+      direction: asString(relation.direction, "directed"),
+    };
+  }) : [];
+  const states = Array.isArray(snapshot.states) ? snapshot.states.map((raw): GraphRelationshipState => {
+    const state = asRecord(raw);
+    return {
+      relationship_id: asString(state.relationship_id),
+      confidence: asNumber(state.confidence),
+      economic_exposure: asNumber(state.economic_exposure),
+      propagation_coefficient: asNumber(state.propagation_coefficient),
+      freshness: asNumber(state.freshness),
+      strategy_eligible: state.strategy_eligible === true,
+      lifecycle_status: asString(state.lifecycle_status, "unknown"),
+      evidence_ids: Array.isArray(state.evidence_ids) ? state.evidence_ids.filter((id): id is string => typeof id === "string") : [],
+    };
+  }) : [];
+  return {
+    snapshot_id: asString(snapshot.snapshot_id),
+    workspace_id: asString(snapshot.workspace_id),
+    universe_id: asString(snapshot.universe_id),
+    as_of_time: asString(snapshot.as_of_time),
+    created_at: asString(snapshot.created_at),
+    nodes,
+    relationships,
+    states,
+    coverage: {
+      tradeable_connected: asNumber(coverage.tradeable_connected),
+      total_tradeable: asNumber(coverage.total_tradeable),
+      eligible_relationships: asNumber(coverage.eligible_relationships),
+      total_relationships: asNumber(coverage.total_relationships),
+      freshness: asNumber(coverage.freshness),
+    },
+  };
+}
+
+export function normalizeGraphSnapshotDiff(value: unknown): GraphSnapshotDiff {
+  const diff = asRecord(value);
+  const rows = (key: string): Array<Record<string, unknown>> => Array.isArray(diff[key])
+    ? (diff[key] as unknown[]).map(asRecord)
+    : [];
+  return { added: rows("added"), removed: rows("removed"), changed: rows("changed") };
+}
+
 // All Wave 2 wire formats live here; the UI never interacts with ad hoc fetches.
 export const normalizeProviderCapabilities = (items: ProviderCapability[]): ProviderCapability[] => items.map((item) => ({
   ...item,
@@ -184,4 +332,12 @@ export const api = {
   createDomainPlan: async (input: DomainPlanRequest) => normalizeDomainPlan(await request<DomainPlanWire>("/api/domain-plans", { method: "POST", body: JSON.stringify(input) })),
   replacePlanCompany: async (planId: string, removeInstrumentId: string, replacementInstrumentId: string) => normalizeDomainPlan(await request<DomainPlanWire>(`/api/domain-plans/${encodeURIComponent(planId)}/replace`, { method: "POST", body: JSON.stringify({ remove_instrument_id: removeInstrumentId, replacement_instrument_id: replacementInstrumentId }) })),
   lockDomainPlan: (planId: string, workspaceName: string) => request<LockedPlan>(`/api/domain-plans/${encodeURIComponent(planId)}/lock`, { method: "POST", body: JSON.stringify({ workspace_name: workspaceName }) }),
+  graphSnapshots: async (workspaceId: string) => {
+    const result = await request<unknown>(`/api/workspaces/${encodeURIComponent(workspaceId)}/graph/snapshots`);
+    const items = Array.isArray(result) ? result : (Array.isArray(asRecord(result).snapshots) ? asRecord(result).snapshots as unknown[] : []);
+    return items.map(normalizeGraphSnapshotSummary);
+  },
+  graphSnapshot: async (snapshotId: string) => normalizeGraphSnapshot(await request<unknown>(`/api/graph-snapshots/${encodeURIComponent(snapshotId)}`)),
+  graphSnapshotDiff: async (snapshotId: string, compareTo: string) => normalizeGraphSnapshotDiff(await request<unknown>(`/api/graph-snapshots/${encodeURIComponent(snapshotId)}/diff?compare_to=${encodeURIComponent(compareTo)}`)),
+  refreshGraph: (workspaceId: string) => request<Job>(`/api/workspaces/${encodeURIComponent(workspaceId)}/graph-refresh`, { method: "POST", body: JSON.stringify({}) }),
 };
