@@ -221,6 +221,7 @@ def test_optional_extraction_composition_accepts_fake_model_and_policy_sets_elig
     agent = build_extraction_agent(
         cache_dir=tmp_path,
         llm=fake_model,
+        sec_user_agent="Agentic Alpha CI test contact@example.test",
         known_entities={
             alias
             for item in universe.instruments

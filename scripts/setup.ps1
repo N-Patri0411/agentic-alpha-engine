@@ -46,12 +46,18 @@ try {
         throw "Dependency installation failed."
     }
 
-    Write-Host "Running verification..."
-    & $venvPython -m pytest -p no:cacheprovider
-    & $venvPython -m ruff check .
-    & $venvPython -m mypy
+    Write-Host "Running the same verification used before every push..."
+    & (Join-Path $PSScriptRoot "verify.ps1")
     if ($LASTEXITCODE -ne 0) {
         throw "Verification failed. Resolve the reported errors before continuing."
+    }
+
+    if (Get-Command git -ErrorAction SilentlyContinue) {
+        Write-Host "Enabling the repository pre-push verification gate..."
+        & git config core.hooksPath .githooks
+        if ($LASTEXITCODE -ne 0) {
+            throw "Could not configure the repository Git hooks."
+        }
     }
 
     Write-Host "Setup complete. Double-click run-demos.cmd to see the offline demos."

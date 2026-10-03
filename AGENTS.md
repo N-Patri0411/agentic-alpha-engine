@@ -16,6 +16,8 @@ Apply these checks to every non-trivial task:
 - Before work: update `main`, read `docs/PROJECT_STATE.md`, and inspect the working tree.
 - Work on one independently testable slice at a time.
 - Update code, tests, and relevant state/research documentation together.
+- Run `verify.cmd` before pushing. `setup.cmd` installs the same check as a
+  pre-push gate for this clone.
 - Commit only work tied to the active slice and push after verification.
 - If synchronization fails, resolve it before beginning another slice.
 - Never commit credentials, licensed/private data, local caches, or machine-specific paths.

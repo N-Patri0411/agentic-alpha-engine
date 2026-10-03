@@ -89,11 +89,18 @@ npm run build
 npm test
 ```
 
-Current results after the feature-refresh follow-up: 238 Python tests passed,
+Current results after the CI-hermeticity follow-up: 238 Python tests passed,
 1 live-PostgreSQL integration test skipped without `TEST_POSTGRES_DSN`; Ruff
-and strict mypy passed. The web production build passed and 21
+and strict mypy passed. The web production build passed and 26
 Vitest/Testing Library tests passed. The build reports large chunks from the
 existing editor dependencies.
+
+`verify.cmd` now reproduces the GitHub Python checks, clean npm install, web
+production build, and web tests locally. `setup.cmd` enables a tracked pre-push
+hook so failed verification blocks a push on each configured laptop. Cloud
+tests inject offline fixtures instead of depending on the ignored `.env` or
+`data/private/evidence.duckdb`; real paid smoke runs still require those local
+inputs explicitly.
 
 A bounded paid smoke test made exactly two Luna extraction calls over existing
 official ASML/TSMC ledger evidence. Luna produced one valid `ASML → TSM`

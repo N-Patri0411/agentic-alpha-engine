@@ -10,6 +10,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+from collections.abc import Callable
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
@@ -261,10 +262,18 @@ def _metadata(
     }
 
 
-def run(*, execute_paid: bool) -> dict[str, Any]:
+def run(
+    *,
+    execute_paid: bool,
+    paid_input_builder: (
+        Callable[[], tuple[FeatureSetVersion, tuple[Any, ...], dict[str, Any]]] | None
+    ) = None,
+) -> dict[str, Any]:
     root = Path(__file__).resolve().parents[1]
     if execute_paid:
-        _, definitions, built = build_local_market_inputs(root)
+        _, definitions, built = (
+            paid_input_builder() if paid_input_builder else build_local_market_inputs(root)
+        )
     else:
         _, definitions, built = build_smoke_inputs()
     manifest = built["manifest"]
@@ -303,8 +312,12 @@ def run(*, execute_paid: bool) -> dict[str, Any]:
         model=role.model,
         call_count=1,
         manifest=manifest,
-        input_mode="local-evidence-ledger-market-bars",
-        symbols=built["symbols"],
+        input_mode=(
+            "injected-test-market-bars"
+            if paid_input_builder
+            else "local-evidence-ledger-market-bars"
+        ),
+        symbols=built.get("symbols", ()),
     )
 
 

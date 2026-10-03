@@ -133,12 +133,16 @@ class ExtractionAgent:
 
 
 def build_extraction_agent(
-    *, cache_dir: Path, llm: LLMClient, known_entities: set[str]
+    *,
+    cache_dir: Path,
+    llm: LLMClient,
+    known_entities: set[str],
+    sec_user_agent: str | None = None,
 ) -> ExtractionAgent:
     """Composition root; callers choose the injected model and source clients."""
 
     return ExtractionAgent(
-        SecFilingAdapter(cache_dir),
+        SecFilingAdapter(cache_dir, user_agent=sec_user_agent),
         FilingSectionSelector(),
         EvidenceProposalExtractor(llm, known_entities),
         EvidenceValidator(known_entities),

@@ -119,7 +119,7 @@ def test_paid_switch_makes_one_client_call_and_records_safe_metadata(monkeypatch
     monkeypatch.setattr(smoke, "create_llm", lambda _config: client)
     monkeypatch.setattr(smoke.Path, "cwd", lambda: smoke.Path(__file__).resolve().parents[1])
 
-    report = smoke.run(execute_paid=True)
+    report = smoke.run(execute_paid=True, paid_input_builder=smoke.build_smoke_inputs)
 
     assert client.calls == 1
     assert report["llm_call_count"] == 1
